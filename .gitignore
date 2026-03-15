@@ -1,0 +1,15 @@
+# Source data (sensitive business data)
+*.xlsx
+jortt-exports/
+data.real.js
+data.demo.js
+
+# OS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Server scripts
+server.py
+server.rb

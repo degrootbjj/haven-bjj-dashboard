@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haven BJJ — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Sidebar / Mobile Nav -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">H</div>
+                <span class="logo-text">Haven BJJ</span>
+            </div>
+            <button class="sidebar-close" id="sidebarClose" aria-label="Sluit menu">✕</button>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#" class="nav-link active" data-page="dashboard">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Dashboard
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="leden">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Leden
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="financien">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Financiën
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="lessen">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Lessen
+            </a></li>
+        </ul>
+    </nav>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="menu-btn" id="menuBtn" aria-label="Open menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="topbar-content">
+                <div>
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Haven BJJ — maart 2026</p>
+                </div>
+                <div class="topbar-actions">
+                    <select class="period-select" id="monthSelect"></select>
+                </div>
+            </div>
+        </header>
+
+        <!-- === PAGE: Dashboard === -->
+        <div class="page active" id="pageDashboard">
+
+        <!-- KPI Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Actieve Leden</span>
+                    <div class="kpi-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiLeden">—</div>
+                <div class="kpi-change" id="kpiLedenChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Maandomzet</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiOmzet">—</div>
+                <div class="kpi-change" id="kpiOmzetChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Trials</span>
+                    <div class="kpi-icon red">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiTrials">—</div>
+                <div class="kpi-change" id="kpiTrialsChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Attrition Rate</span>
+                    <div class="kpi-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiAttrition">—</div>
+                <div class="kpi-change" id="kpiAttritionChange"></div>
+            </div>
+        </section>
+
+        <!-- Charts Row -->
+        <section class="charts-grid">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">Omzet & Leden</h2>
+                    <span class="card-subtitle">Laatste 12 maanden</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">Ledenverdeling</h2>
+                    <span class="card-subtitle">Per abonnement</span>
+                </div>
+                <div class="chart-container chart-container-donut">
+                    <canvas id="membersChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Row -->
+        <section class="bottom-grid">
+            <!-- Membership Breakdown -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Abonnementen</h2>
+                </div>
+                <div class="membership-list" id="membershipList"></div>
+                <p class="card-note" id="membershipNote" style="margin-top: 16px; font-size: 12px; color: #94a3b8;"></p>
+            </div>
+
+            <!-- Kerncijfers -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" id="kerncijfersTitle">Kerncijfers</h2>
+                </div>
+                <div class="activity-list" id="kerncijfersList"></div>
+            </div>
+        </section>
+        </div><!-- /pageDashboard -->
+
+        <!-- === PAGE: Leden === -->
+        <div class="page" id="pageLeden">
+
+        <!-- Leden KPI Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Totale Bezoeken</span>
+                    <div class="kpi-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiParticipants">—</div>
+                <div class="kpi-change" id="kpiParticipantsChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Gem. per Les</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiPPS">—</div>
+                <div class="kpi-change" id="kpiPPSChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Sessies per Lid</span>
+                    <div class="kpi-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiSPM">—</div>
+                <div class="kpi-change" id="kpiSPMChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Totaal Sessies</span>
+                    <div class="kpi-icon red">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiSessions">—</div>
+                <div class="kpi-change" id="kpiSessionsChange"></div>
+            </div>
+        </section>
+
+        <!-- Leden Chart -->
+        <section class="charts-grid">
+            <div class="card chart-card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2 class="card-title">Bezoeken & Gem. per Les</h2>
+                    <span class="card-subtitle">Laatste 12 maanden</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Leden Kerncijfers -->
+        <section class="bottom-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" id="ledenKerncijfersTitle">Lesstatistieken</h2>
+                </div>
+                <div class="activity-list" id="ledenKerncijfersList"></div>
+            </div>
+        </section>
+        </div><!-- /pageLeden -->
+
+        <!-- === PAGE: Financiën === -->
+        <div class="page" id="pageFinancien">
+
+        <!-- Financiën KPI Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Omzet</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiRevenue">—</div>
+                <div class="kpi-change" id="kpiRevenueChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Kosten</span>
+                    <div class="kpi-icon red">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiCosts">—</div>
+                <div class="kpi-change" id="kpiCostsChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Payroll</span>
+                    <div class="kpi-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiPayroll">—</div>
+                <div class="kpi-change" id="kpiPayrollChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Winst</span>
+                    <div class="kpi-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiProfit">—</div>
+                <div class="kpi-change" id="kpiProfitChange"></div>
+            </div>
+        </section>
+
+        <!-- Financiën Charts -->
+        <section class="charts-grid">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">Omzet, Kosten & Winst</h2>
+                    <span class="card-subtitle">Laatste 12 maanden</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="financeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">Kostenverdeling</h2>
+                    <span class="card-subtitle">Per categorie</span>
+                </div>
+                <div class="chart-container chart-container-donut">
+                    <canvas id="costDonutChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Financiën Bottom -->
+        <section class="bottom-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Kostenoverzicht</h2>
+                </div>
+                <div class="membership-list" id="costBreakdownList"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" id="finKerncijfersTitle">Financiële kerncijfers</h2>
+                </div>
+                <div class="activity-list" id="finKerncijfersList"></div>
+            </div>
+        </section>
+        </div><!-- /pageFinancien -->
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="data.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
