@@ -1,13 +1,41 @@
+<?php
+require_once __DIR__ . '/includes/session.php';
+requireAuth();
+$csrfToken = getCsrfToken();
+$gymName = GYM_NAME;
+$currentUser = $_SESSION['user'];
+
+// Load user preferences (theme, avatar)
+$prefsFile = DATA_DIR . 'preferences.json';
+$userPrefs = [];
+if (file_exists($prefsFile)) {
+    $allPrefs = json_decode(file_get_contents($prefsFile), true) ?: [];
+    $userPrefs = $allPrefs[$currentUser] ?? [];
+}
+$userTheme = $userPrefs['theme'] ?? 'light';
+
+// Check for avatar
+$avatarUrl = '';
+$avatarDir = DATA_DIR . 'avatars/';
+foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
+    $avatarPath = $avatarDir . $currentUser . '.' . $ext;
+    if (file_exists($avatarPath)) {
+        $avatarUrl = 'data/avatars/' . $currentUser . '.' . $ext . '?t=' . filemtime($avatarPath);
+        break;
+    }
+}
+?>
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" data-theme="<?= htmlspecialchars($userTheme) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Haven BJJ — Dashboard</title>
+    <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken) ?>">
+    <title><?= htmlspecialchars($gymName) ?> — Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=9">
+    <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -53,6 +81,20 @@
                 Simulator
             </a></li>
         </ul>
+        <div class="sidebar-bottom">
+            <a href="#" class="nav-link sidebar-account-link" data-page="account">
+                <?php if ($avatarUrl): ?>
+                    <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="" class="sidebar-avatar" id="sidebarAvatar">
+                <?php else: ?>
+                    <div class="sidebar-avatar sidebar-avatar-placeholder" id="sidebarAvatar"><?= htmlspecialchars(strtoupper(substr($currentUser, 0, 1))) ?></div>
+                <?php endif; ?>
+                <span><?= htmlspecialchars(ucfirst($currentUser)) ?></span>
+            </a>
+            <a href="logout.php" class="sidebar-logout-link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Uitloggen
+            </a>
+        </div>
     </nav>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -935,6 +977,72 @@
 
         </div><!-- /pageSimulator -->
 
+        <!-- ═══ Account & Settings ═══ -->
+        <div class="page" id="pageAccount">
+            <div class="account-grid">
+                <!-- Profile Section -->
+                <div class="card account-card">
+                    <h3 class="account-card-title">Profiel</h3>
+                    <div class="account-avatar-section">
+                        <div class="account-avatar-wrapper">
+                            <?php if ($avatarUrl): ?>
+                                <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="Profielfoto" class="account-avatar" id="accountAvatar">
+                            <?php else: ?>
+                                <div class="account-avatar account-avatar-placeholder" id="accountAvatar"><?= htmlspecialchars(strtoupper(substr($currentUser, 0, 1))) ?></div>
+                            <?php endif; ?>
+                            <label class="account-avatar-upload" for="avatarInput" title="Foto wijzigen">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            </label>
+                            <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/webp" style="display:none">
+                        </div>
+                        <div class="account-user-info">
+                            <div class="account-username"><?= htmlspecialchars(ucfirst($currentUser)) ?></div>
+                            <div class="account-role">Beheerder</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Section -->
+                <div class="card account-card">
+                    <h3 class="account-card-title">Wachtwoord wijzigen</h3>
+                    <div class="account-form" id="passwordForm">
+                        <div class="account-field">
+                            <label for="currentPassword">Huidig wachtwoord</label>
+                            <input type="password" id="currentPassword" autocomplete="current-password">
+                        </div>
+                        <div class="account-field">
+                            <label for="newPassword">Nieuw wachtwoord</label>
+                            <input type="password" id="newPassword" autocomplete="new-password">
+                        </div>
+                        <div class="account-field">
+                            <label for="confirmPassword">Bevestig nieuw wachtwoord</label>
+                            <input type="password" id="confirmPassword" autocomplete="new-password">
+                        </div>
+                        <div class="account-message" id="passwordMessage"></div>
+                        <button class="btn-primary" id="savePasswordBtn">Wachtwoord opslaan</button>
+                    </div>
+                </div>
+
+                <!-- Theme Section -->
+                <div class="card account-card">
+                    <h3 class="account-card-title">Weergave</h3>
+                    <div class="account-theme-section">
+                        <p class="account-theme-label">Thema</p>
+                        <div class="theme-toggle-group">
+                            <button class="theme-option <?= $userTheme === 'light' ? 'active' : '' ?>" data-theme-value="light">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                                Licht
+                            </button>
+                            <button class="theme-option <?= $userTheme === 'dark' ? 'active' : '' ?>" data-theme-value="dark">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                                Donker
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /pageAccount -->
+
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -942,8 +1050,15 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="jspdf.umd.min.js"></script>
     <script src="jspdf.plugin.autotable.min.js"></script>
-    <script src="config.js"></script>
-    <script src="data.js?v=9"></script>
-    <script src="dashboard.js?v=9"></script>
+    <!-- Data loaded via API in dashboard.js -->
+    <!-- Notion config embedded by PHP -->
+    <script>
+    const NOTION_CONFIG = {
+        API_KEY: '', // Not needed client-side, proxy handles auth
+        PROXY_URL: 'api/notion-proxy.php',
+        PAGES: <?= json_encode(NOTION_PAGES) ?>
+    };
+    </script>
+    <script src="dashboard.js?v=10"></script>
 </body>
 </html>

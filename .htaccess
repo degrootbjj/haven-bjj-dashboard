@@ -1,0 +1,23 @@
+# Haven BJJ Dashboard — Security Rules
+
+# Force HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Block direct access to protected directories
+RewriteRule ^data/ - [F]
+RewriteRule ^includes/ - [F]
+
+# Prevent directory listing
+Options -Indexes
+
+# Default to login page
+DirectoryIndex login.php
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

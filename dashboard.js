@@ -1,6 +1,23 @@
 // ============================================
-// Haven BJJ — Dashboard JavaScript
+// Haven BJJ — Dashboard JavaScript (Online Version)
 // ============================================
+
+// --- CSRF Token ---
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+// --- Data (loaded from API) ---
+let DASHBOARD_DATA = {};
+let MAILCHIMP_DATA = {};
+
+async function loadData() {
+    const [dashResp, mcResp] = await Promise.all([
+        fetch('api/data.php?type=dashboard'),
+        fetch('api/data.php?type=mailchimp')
+    ]);
+    if (!dashResp.ok || !mcResp.ok) throw new Error('Data laden mislukt');
+    DASHBOARD_DATA = await dashResp.json();
+    MAILCHIMP_DATA = await mcResp.json();
+}
 
 // --- Sidebar Toggle (Mobile) ---
 const menuBtn = document.getElementById('menuBtn');
@@ -24,7 +41,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', uploads: 'Uploads', simulator: 'Prijssimulator' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', uploads: 'Uploads', simulator: 'Prijssimulator', account: 'Account' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -53,6 +70,7 @@ function updateCurrentPage() {
     else if (currentPage === 'nieuwsbrief') updateNieuwsbrief();
     else if (currentPage === 'uploads') updateUploads(ym);
     else if (currentPage === 'simulator') updateSimulator(ym);
+    else if (currentPage === 'account') { /* static page, no data update needed */ }
 }
 
 // --- Chart.js Config ---
@@ -106,20 +124,23 @@ function setChange(el, diff, suffix, invert) {
 }
 
 // --- Selectable months (only those with Grib data) ---
-const selectableMonths = Object.keys(DASHBOARD_DATA)
-    .filter(ym => DASHBOARD_DATA[ym].categories)
-    .sort();
-
-// --- Month Selector ---
+let selectableMonths = [];
 const monthSelect = document.getElementById('monthSelect');
-selectableMonths.forEach(ym => {
-    const opt = document.createElement('option');
-    opt.value = ym;
-    const [y, m] = ym.split('-');
-    opt.textContent = MONTH_NAMES[m] + ' ' + y;
-    monthSelect.appendChild(opt);
-});
-monthSelect.value = selectableMonths[selectableMonths.length - 1];
+
+function populateMonths() {
+    selectableMonths = Object.keys(DASHBOARD_DATA)
+        .filter(ym => DASHBOARD_DATA[ym].categories)
+        .sort();
+    monthSelect.innerHTML = '';
+    selectableMonths.forEach(ym => {
+        const opt = document.createElement('option');
+        opt.value = ym;
+        const [y, m] = ym.split('-');
+        opt.textContent = MONTH_NAMES[m] + ' ' + y;
+        monthSelect.appendChild(opt);
+    });
+    monthSelect.value = selectableMonths[selectableMonths.length - 1];
+}
 
 // --- Charts (created once, updated on month change) ---
 let revenueChart, donutChart, attendanceChart, financeChart, costDonutChart, mkLeadsChart, mkSourceDonut, mkGrowthChart, simMembersChart, simRevenueChart, simCurveChart;
@@ -1793,14 +1814,21 @@ function generatePDFReport() {
     btn.querySelector('span').textContent = 'PDF Rapport';
 }
 
-// --- Init ---
-createCharts();
-createAttendanceChart();
-createFinanceCharts();
-updateDashboard(monthSelect.value);
-
+// --- Init (async — loads data from API first) ---
 monthSelect.addEventListener('change', () => {
     updateCurrentPage();
+});
+
+loadData().then(() => {
+    populateMonths();
+    createCharts();
+    createAttendanceChart();
+    createFinanceCharts();
+    updateDashboard(monthSelect.value);
+}).catch(err => {
+    console.error('Failed to load data:', err);
+    document.querySelector('.main-content').innerHTML =
+        '<div style="padding:40px;text-align:center;color:#dc2626;">Data laden mislukt. Probeer de pagina te herladen.</div>';
 });
 
 // =============================================
@@ -1852,7 +1880,7 @@ function nbGetISOWeek(d) {
 
 // Fetch blocks from Notion proxy
 async function nbFetchBlocks(blockId) {
-    const resp = await fetch(`${NB_PROXY}/blocks/${blockId}/children`);
+    const resp = await fetch(`${NB_PROXY}?path=blocks/${blockId}/children`);
     if (!resp.ok) throw new Error('Notion fetch failed: ' + resp.status);
     const data = await resp.json();
     return data.results || [];
@@ -2660,9 +2688,12 @@ document.getElementById('uploadSubmitBtn')?.addEventListener('click', async () =
     btn.disabled = true;
 
     try {
-        const resp = await fetch('/api/update-data', {
+        const resp = await fetch('api/data.php?type=dashboard', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             body: JSON.stringify({ ym, entry: cleanEntry })
         });
 
@@ -2690,4 +2721,153 @@ document.getElementById('uploadSubmitBtn')?.addEventListener('click', async () =
             btn.disabled = false;
         }, 2000);
     }
+});
+
+// ═══════════════════════════════════════════════════════
+// ACCOUNT & SETTINGS
+// ═══════════════════════════════════════════════════════
+
+// --- Avatar Upload ---
+const avatarInput = document.getElementById('avatarInput');
+if (avatarInput) {
+    avatarInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Bestand is te groot (max 5MB)');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        try {
+            const resp = await fetch('api/account.php?action=avatar', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken },
+                body: formData
+            });
+
+            const result = await resp.json();
+            if (resp.ok && result.ok) {
+                // Update avatar in account page
+                const accountAvatar = document.getElementById('accountAvatar');
+                const wrapper = accountAvatar.parentElement;
+                const img = document.createElement('img');
+                img.src = result.avatarUrl;
+                img.alt = 'Profielfoto';
+                img.className = 'account-avatar';
+                img.id = 'accountAvatar';
+                accountAvatar.replaceWith(img);
+
+                // Update sidebar avatar
+                const sidebarAvatar = document.getElementById('sidebarAvatar');
+                if (sidebarAvatar) {
+                    const sImg = document.createElement('img');
+                    sImg.src = result.avatarUrl;
+                    sImg.alt = '';
+                    sImg.className = 'sidebar-avatar';
+                    sImg.id = 'sidebarAvatar';
+                    sidebarAvatar.replaceWith(sImg);
+                }
+            } else {
+                alert(result.error || 'Upload mislukt');
+            }
+        } catch (err) {
+            console.error('Avatar upload error:', err);
+            alert('Upload mislukt: ' + err.message);
+        }
+    });
+}
+
+// --- Password Change ---
+const savePasswordBtn = document.getElementById('savePasswordBtn');
+if (savePasswordBtn) {
+    savePasswordBtn.addEventListener('click', async () => {
+        const currentPw = document.getElementById('currentPassword').value;
+        const newPw = document.getElementById('newPassword').value;
+        const confirmPw = document.getElementById('confirmPassword').value;
+        const msgEl = document.getElementById('passwordMessage');
+
+        msgEl.textContent = '';
+        msgEl.className = 'account-message';
+
+        if (!currentPw || !newPw || !confirmPw) {
+            msgEl.textContent = 'Vul alle velden in';
+            msgEl.classList.add('error');
+            return;
+        }
+
+        if (newPw !== confirmPw) {
+            msgEl.textContent = 'Nieuwe wachtwoorden komen niet overeen';
+            msgEl.classList.add('error');
+            return;
+        }
+
+        if (newPw.length < 6) {
+            msgEl.textContent = 'Nieuw wachtwoord moet minimaal 6 tekens zijn';
+            msgEl.classList.add('error');
+            return;
+        }
+
+        savePasswordBtn.disabled = true;
+        savePasswordBtn.textContent = 'Opslaan...';
+
+        try {
+            const resp = await fetch('api/account.php?action=password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ current: currentPw, new: newPw })
+            });
+
+            const result = await resp.json();
+            if (resp.ok && result.ok) {
+                msgEl.textContent = 'Wachtwoord gewijzigd!';
+                msgEl.classList.add('success');
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+            } else {
+                msgEl.textContent = result.error || 'Fout bij opslaan';
+                msgEl.classList.add('error');
+            }
+        } catch (err) {
+            msgEl.textContent = 'Fout: ' + err.message;
+            msgEl.classList.add('error');
+        }
+
+        savePasswordBtn.disabled = false;
+        savePasswordBtn.textContent = 'Wachtwoord opslaan';
+    });
+}
+
+// --- Theme Toggle ---
+document.querySelectorAll('.theme-option').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const theme = btn.dataset.themeValue;
+        if (!theme) return;
+
+        // Update UI immediately
+        document.documentElement.dataset.theme = theme;
+        document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Save to server
+        try {
+            await fetch('api/account.php?action=theme', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ theme })
+            });
+        } catch (err) {
+            console.error('Theme save error:', err);
+        }
+    });
 });

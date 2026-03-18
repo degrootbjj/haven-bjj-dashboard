@@ -1,16 +1,18 @@
-# Source data (sensitive business data)
-*.xlsx
+# Local development files (not for deployment)
+_local/
 jortt-exports/
-data.real.js
-data.demo.js
+*.xlsx
+*.csv
+
+# Server-side data (managed on server, not in repo)
+data/dashboard_data.json
+data/mailchimp_data.json
+data/users.json
+data/preferences.json
+data/avatars/
 
 # OS
 .DS_Store
 
 # Claude Code
 .claude/
-
-# Server scripts
-server.py
-server.rb
-config.js
