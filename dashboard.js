@@ -2306,28 +2306,46 @@ UPLOAD_CONFIGS.forEach(cfg => {
     const filenameEl = dropzone.querySelector('.upload-filename');
     const statusEl = document.getElementById(cfg.statusId);
 
-    fileInput.addEventListener('change', () => {
+    fileInput.addEventListener('change', async () => {
         const file = fileInput.files[0];
         if (!file) return;
         filenameEl.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
         dropzone.classList.add('has-file');
         dropzone.classList.remove('has-error');
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                uploadState[cfg.key] = { text: e.target.result, filename: file.name };
-                statusEl.textContent = '✓';
-                statusEl.style.color = 'var(--green)';
-                renderUploadPreview(monthSelect.value);
-            } catch (err) {
-                statusEl.textContent = '✗';
-                statusEl.style.color = 'var(--red)';
-                dropzone.classList.add('has-error');
-                dropzone.classList.remove('has-file');
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        try {
+            if (ext === 'zip') {
+                // ZIP file (Mailchimp export) — extract CSV inside
+                const buf = await file.arrayBuffer();
+                const zip = await JSZip.loadAsync(buf);
+                const csvName = Object.keys(zip.files).find(f => f.endsWith('.csv'));
+                if (!csvName) throw new Error('Geen CSV gevonden in ZIP');
+                const text = await zip.files[csvName].async('string');
+                uploadState[cfg.key] = { text, filename: file.name, type: 'csv' };
+            } else if (ext === 'xlsx' || ext === 'xls') {
+                // Excel file (Grib exports) — parse with SheetJS
+                const buf = await file.arrayBuffer();
+                const wb = XLSX.read(buf, { type: 'array' });
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                uploadState[cfg.key] = { rows, filename: file.name, type: 'xlsx' };
+            } else {
+                // CSV file — read as text
+                const text = await file.text();
+                uploadState[cfg.key] = { text, filename: file.name, type: 'csv' };
             }
-        };
-        reader.readAsText(file);
+            statusEl.textContent = '✓';
+            statusEl.style.color = 'var(--green)';
+            renderUploadPreview(monthSelect.value);
+        } catch (err) {
+            console.error('Upload parse error:', err);
+            statusEl.textContent = '✗';
+            statusEl.style.color = 'var(--red)';
+            dropzone.classList.add('has-error');
+            dropzone.classList.remove('has-file');
+        }
     });
 
     // Drag & drop
@@ -2360,9 +2378,7 @@ function renderUploadPreview(ym) {
     // Gather raw parsed data
     let mailchimp = null;
     if (uploadState.mailchimp) {
-        const rows = csvToRows(uploadState.mailchimp.text);
-        // Mailchimp: count rows as trials, or look for specific fields
-        mailchimp = { trials: rows.length, trials_u18: null };
+        mailchimp = parseMailchimpCSV(uploadState.mailchimp.text, ym);
     }
 
     let jortt = null;
@@ -2372,18 +2388,19 @@ function renderUploadPreview(ym) {
 
     let gribLeden = null;
     if (uploadState.gribLeden) {
-        gribLeden = parseGribLedenCSV(uploadState.gribLeden.text);
+        const data = uploadState.gribLeden.type === 'xlsx' ? uploadState.gribLeden.rows : csvToRows(uploadState.gribLeden.text);
+        gribLeden = parseGribLeden(data);
     }
 
     let gribNieuw = null;
     if (uploadState.gribNieuw) {
-        const rows = csvToRows(uploadState.gribNieuw.text);
+        const rows = uploadState.gribNieuw.type === 'xlsx' ? uploadState.gribNieuw.rows : csvToRows(uploadState.gribNieuw.text);
         gribNieuw = { new_members: rows.length, new_members_excel: rows.length };
     }
 
     let gribVerloren = null;
     if (uploadState.gribVerloren) {
-        const rows = csvToRows(uploadState.gribVerloren.text);
+        const rows = uploadState.gribVerloren.type === 'xlsx' ? uploadState.gribVerloren.rows : csvToRows(uploadState.gribVerloren.text);
         gribVerloren = { lost: rows.length, lost_members: rows.length };
     }
 
@@ -2464,63 +2481,115 @@ function renderUploadPreview(ym) {
     output.textContent = '  ' + json.slice(2, -2).trim();
 }
 
-// Placeholder Jortt parser — extracts W&V data
-function parseJorttCSV(text) {
+// Mailchimp parser — counts trials by OPTIN_TIME matching selected month
+function parseMailchimpCSV(text, ym) {
     const rows = csvToRows(text);
-    let revenue = 0, costs = 0, payroll = 0;
+    let trials = 0;
+
+    rows.forEach(row => {
+        // Use OPTIN_TIME or CONFIRM_TIME to match the selected month
+        const optinTime = row['OPTIN_TIME'] || row['CONFIRM_TIME'] || '';
+        if (optinTime.startsWith(ym)) {
+            trials++;
+        }
+    });
+
+    return { trials, trials_u18: null, total_subscribers: rows.length };
+}
+
+// Jortt W&V parser — handles hierarchical P&L format
+// Format: each row has label + amount in different columns based on indent level
+function parseJorttCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const delim = lines[0].includes(';') ? ';' : ',';
+
+    let revenue = 0, costs = 0, depreciation = 0, payroll = 0;
     const costCats = {};
     const revCats = {};
+    let section = null; // 'revenue', 'costs', 'depreciation'
 
-    // Try to identify structure from headers
-    // Common Jortt W&V export: columns like "Categorie", "Bedrag" or line items
-    rows.forEach(row => {
-        const cat = row['Categorie'] || row['Category'] || row['Omschrijving'] || '';
-        const amount = parseDutchNum(row['Bedrag'] || row['Amount'] || row['Totaal'] || '0');
+    for (const line of lines) {
+        const cells = line.split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
 
-        if (cat && amount) {
-            // Simple heuristic: positive = revenue, negative = cost
-            if (amount > 0) {
-                revCats[cat] = (revCats[cat] || 0) + amount;
-                revenue += amount;
-            } else {
-                costCats[cat] = (costCats[cat] || 0) + Math.abs(amount);
-                costs += Math.abs(amount);
+        // Find the label (first non-empty non-numeric cell)
+        let label = '', labelIdx = -1;
+        for (let i = 0; i < cells.length; i++) {
+            if (cells[i] && !/^-?[\d.,]+$/.test(cells[i])) {
+                label = cells[i];
+                labelIdx = i;
+                break;
             }
         }
-    });
 
-    // Look for payroll specifically
-    Object.keys(costCats).forEach(k => {
-        if (k.toLowerCase().includes('personeel') || k.toLowerCase().includes('loon') || k.toLowerCase().includes('salaris')) {
-            payroll += costCats[k];
+        // Find the amount (first numeric value, not at label position)
+        let amount = 0;
+        for (let i = 0; i < cells.length; i++) {
+            if (cells[i] && i !== labelIdx) {
+                const num = parseDutchNum(cells[i]);
+                if (num !== 0) { amount = num; break; }
+            }
         }
-    });
+
+        if (!label) continue;
+        const ll = label.toLowerCase().trim();
+
+        // Detect top-level sections
+        if (ll === 'opbrengsten') { section = 'revenue'; revenue = amount; continue; }
+        if (ll === 'kosten') { section = 'costs'; costs = amount; continue; }
+        if (ll.startsWith('afschrijvingen') && labelIdx <= 0) { section = 'depreciation'; depreciation = amount; continue; }
+
+        // Track sub-categories (level 1 items within sections)
+        if (section === 'revenue' && amount > 0 && labelIdx <= 1) {
+            revCats[label] = amount;
+        }
+        if (section === 'costs' && amount > 0 && labelIdx <= 1) {
+            costCats[label] = amount;
+            if (ll.includes('personeel') || ll.includes('loon') || ll.includes('salaris')) {
+                payroll += amount;
+            }
+        }
+        if (section === 'depreciation' && amount > 0 && labelIdx <= 1) {
+            costCats[label] = amount;
+        }
+    }
+
+    const totalCosts = costs + depreciation;
 
     return {
         revenue: Math.round(revenue * 100) / 100,
-        costs: Math.round(costs * 100) / 100,
-        profit: Math.round((revenue - costs) * 100) / 100,
+        costs: Math.round(totalCosts * 100) / 100,
+        profit: Math.round((revenue - totalCosts) * 100) / 100,
         payroll: Math.round(payroll * 100) / 100,
         cost_categories: costCats,
         revenue_categories: revCats
     };
 }
 
-// Placeholder Grib leden parser
-function parseGribLedenCSV(text) {
-    const rows = csvToRows(text);
+// Grib leden parser — handles both XLSX rows and CSV text
+// Column: naam_abonnement with English membership names
+function parseGribLeden(data) {
+    const rows = Array.isArray(data) ? data : csvToRows(data);
     const catMap = { 'Yearly': 0, 'Monthly': 0, 'Yearly Student': 0, 'Monthly Student': 0, 'Yearly U18': 0, 'Monthly U18': 0 };
 
-    // Try to categorize members by subscription type
     rows.forEach(row => {
-        const sub = row['Abonnement'] || row['Subscription'] || row['Type'] || '';
-        const subLower = sub.toLowerCase();
-        if (subLower.includes('jaar') && subLower.includes('student')) catMap['Yearly Student']++;
-        else if (subLower.includes('jaar') && subLower.includes('u18')) catMap['Yearly U18']++;
-        else if (subLower.includes('jaar')) catMap['Yearly']++;
-        else if (subLower.includes('maand') && subLower.includes('student')) catMap['Monthly Student']++;
-        else if (subLower.includes('maand') && subLower.includes('u18')) catMap['Monthly U18']++;
-        else if (subLower.includes('maand')) catMap['Monthly']++;
+        const sub = (row['naam_abonnement'] || row['Abonnement'] || row['Subscription'] || row['Type'] || '').toString().toLowerCase();
+        if (!sub) return; // Skip rows without subscription (e.g. strippenkaart only)
+
+        const isMonthly = sub.includes('monthly') || sub.includes('maand');
+        const isU18 = sub.includes('under 18') || sub.includes('u18');
+        const isStudent = sub.includes('student');
+
+        // Priority: U18 > Student > Regular. "Founding Member Student / Under 18" → U18
+        if (isU18) {
+            catMap[isMonthly ? 'Monthly U18' : 'Yearly U18']++;
+        } else if (isStudent) {
+            catMap[isMonthly ? 'Monthly Student' : 'Yearly Student']++;
+        } else if (isMonthly) {
+            catMap['Monthly']++;
+        } else if (sub.includes('yearly') || sub.includes('jaar') || sub.includes('membership')) {
+            catMap['Yearly']++;
+        }
+        // Sponsored, Single Class, etc. → not counted in 6 categories → goes to Overig
     });
 
     const total6cat = Object.values(catMap).reduce((a, b) => a + b, 0);

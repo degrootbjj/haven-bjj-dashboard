@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=8">
+    <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -614,9 +614,9 @@
                         <span class="upload-status" id="statusMailchimp"></span>
                     </div>
                     <label class="upload-dropzone" id="dropMailchimp">
-                        <input type="file" accept=".csv" hidden>
+                        <input type="file" accept=".csv,.zip" hidden>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-label">Klik of sleep CSV of ZIP hier</span>
                         <span class="upload-filename"></span>
                     </label>
                 </div>
@@ -642,9 +642,9 @@
                         <span class="upload-status" id="statusGribLeden"></span>
                     </div>
                     <label class="upload-dropzone" id="dropGribLeden">
-                        <input type="file" accept=".csv" hidden>
+                        <input type="file" accept=".csv,.xlsx,.xls" hidden>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-label">Klik of sleep CSV of XLSX hier</span>
                         <span class="upload-filename"></span>
                     </label>
                 </div>
@@ -656,9 +656,9 @@
                         <span class="upload-status" id="statusGribNieuw"></span>
                     </div>
                     <label class="upload-dropzone" id="dropGribNieuw">
-                        <input type="file" accept=".csv" hidden>
+                        <input type="file" accept=".csv,.xlsx,.xls" hidden>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-label">Klik of sleep CSV of XLSX hier</span>
                         <span class="upload-filename"></span>
                     </label>
                 </div>
@@ -670,9 +670,9 @@
                         <span class="upload-status" id="statusGribVerloren"></span>
                     </div>
                     <label class="upload-dropzone" id="dropGribVerloren">
-                        <input type="file" accept=".csv" hidden>
+                        <input type="file" accept=".csv,.xlsx,.xls" hidden>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-label">Klik of sleep CSV of XLSX hier</span>
                         <span class="upload-filename"></span>
                     </label>
                 </div>
@@ -918,10 +918,12 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="jspdf.umd.min.js"></script>
     <script src="jspdf.plugin.autotable.min.js"></script>
     <script src="config.js"></script>
-    <script src="data.js?v=8"></script>
-    <script src="dashboard.js?v=8"></script>
+    <script src="data.js?v=9"></script>
+    <script src="dashboard.js?v=9"></script>
 </body>
 </html>
