@@ -2443,13 +2443,19 @@ function renderUploadPreview(ym) {
         return val.toString().slice(0, 7);
     }
 
+    // Only count real memberships (Yearly/Monthly variants), exclude trials, weeks, coaches etc.
+    function isRealMembership(row) {
+        const sub = (row['subscription'] || row['Subscription'] || row['naam_abonnement'] || '').toString().toLowerCase();
+        return sub.includes('monthly') || sub.includes('maand') || sub.includes('yearly') || sub.includes('jaar') || sub.includes('membership');
+    }
+
     let gribNieuw = null;
     if (uploadState.gribNieuw) {
         const rows = uploadState.gribNieuw.type === 'xlsx' ? uploadState.gribNieuw.rows : csvToRows(uploadState.gribNieuw.text);
-        // Filter on startDate matching selected month (YYYY-MM)
+        // Filter on startDate matching selected month AND real memberships only
         const filtered = rows.filter(row => {
             const d = row['startDate'] ?? row['startdate'] ?? row['StartDate'] ?? '';
-            return toYM(d) === ym;
+            return toYM(d) === ym && isRealMembership(row);
         });
         gribNieuw = { new_members: filtered.length, new_members_excel: filtered.length };
     }
@@ -2457,10 +2463,10 @@ function renderUploadPreview(ym) {
     let gribVerloren = null;
     if (uploadState.gribVerloren) {
         const rows = uploadState.gribVerloren.type === 'xlsx' ? uploadState.gribVerloren.rows : csvToRows(uploadState.gribVerloren.text);
-        // Filter on endDate matching selected month (YYYY-MM)
+        // Filter on endDate matching selected month AND real memberships only
         const filtered = rows.filter(row => {
             const d = row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? '';
-            return toYM(d) === ym;
+            return toYM(d) === ym && isRealMembership(row);
         });
         gribVerloren = { lost: filtered.length, lost_members: filtered.length };
     }
