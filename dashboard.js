@@ -2357,8 +2357,13 @@ UPLOAD_CONFIGS.forEach(cfg => {
                 // Excel file (Grib exports) — parse with SheetJS
                 const buf = await file.arrayBuffer();
                 const wb = XLSX.read(buf, { type: 'array' });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                // Read ALL sheets and combine rows
+                let rows = [];
+                wb.SheetNames.forEach(name => {
+                    const sheet = wb.Sheets[name];
+                    const sheetRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                    rows = rows.concat(sheetRows);
+                });
                 uploadState[cfg.key] = { rows, filename: file.name, type: 'xlsx' };
             } else {
                 // CSV file — read as text
@@ -2446,12 +2451,8 @@ function renderUploadPreview(ym) {
     let gribProeflessen = null;
     if (uploadState.gribProeflessen) {
         const rows = uploadState.gribProeflessen.type === 'xlsx' ? uploadState.gribProeflessen.rows : csvToRows(uploadState.gribProeflessen.text);
-        // Filter on startDate matching selected month (YYYY-MM)
-        const filtered = rows.filter(row => {
-            const d = (row['startDate'] || row['startdate'] || row['StartDate'] || '').toString();
-            return d.startsWith(ym);
-        });
-        gribProeflessen = { trials: filtered.length };
+        // Proeflessen file is already exported per month, count all rows
+        gribProeflessen = { trials: rows.length };
     }
 
     const zettle = parseFloat(document.getElementById('inputZettle')?.value) || null;
