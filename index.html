@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -36,6 +36,18 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 Lessen
             </a></li>
+            <li><a href="#" class="nav-link" data-page="marketing">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Marketing
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="nieuwsbrief">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Crew Briefing
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="simulator">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                Simulator
+            </a></li>
         </ul>
     </nav>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -53,6 +65,10 @@
                     <p class="page-subtitle">Haven BJJ — maart 2026</p>
                 </div>
                 <div class="topbar-actions">
+                    <button class="btn-pdf" id="btnPdfRapport" onclick="generatePDFReport()" title="Download PDF rapport">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                        <span>PDF Rapport</span>
+                    </button>
                     <select class="period-select" id="monthSelect"></select>
                 </div>
             </div>
@@ -105,6 +121,17 @@
                 </div>
                 <div class="kpi-value" id="kpiAttrition">—</div>
                 <div class="kpi-change" id="kpiAttritionChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Customer LTV</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiLTV">—</div>
+                <div class="kpi-change" id="kpiLTVChange"></div>
             </div>
         </section>
 
@@ -202,6 +229,53 @@
             </div>
         </section>
 
+        <!-- Leden KPI Cards Row 2 -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Trial → Lid %</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiTrialConversion">—</div>
+                <div class="kpi-change" id="kpiTrialConversionChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Nieuwe Leden</span>
+                    <div class="kpi-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiNewMembers">—</div>
+                <div class="kpi-change" id="kpiNewMembersChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Verloren Leden</span>
+                    <div class="kpi-icon red">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="11" x2="23" y2="11"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiLostMembers">—</div>
+                <div class="kpi-change" id="kpiLostMembersChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Gem. LEG</span>
+                    <div class="kpi-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiLEG">—</div>
+                <div class="kpi-change" id="kpiLEGChange"></div>
+            </div>
+        </section>
+
         <!-- Leden Chart -->
         <section class="charts-grid">
             <div class="card chart-card" style="grid-column: 1 / -1;">
@@ -276,6 +350,31 @@
             </div>
         </section>
 
+        <!-- EBITDA KPI Cards -->
+        <section class="kpi-grid kpi-grid-2">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">EBITDA (maand)</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiEbitda">—</div>
+                <div class="kpi-change" id="kpiEbitdaChange"></div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">EBITDA (12 mnd)</span>
+                    <div class="kpi-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="kpiEbitda12">—</div>
+                <div class="kpi-change" id="kpiEbitda12Change"></div>
+            </div>
+        </section>
+
         <!-- Financiën Charts -->
         <section class="charts-grid">
             <div class="card chart-card">
@@ -317,10 +416,398 @@
         </section>
         </div><!-- /pageFinancien -->
 
+        <!-- === PAGE: Marketing === -->
+        <div class="page" id="pageMarketing">
+
+        <!-- Marketing KPI Cards -->
+        <section class="kpi-grid kpi-grid-5">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Nieuwe Leads</span>
+                    <div class="kpi-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="mkKpiLeads">—</div>
+                <div class="kpi-change" id="mkKpiLeadsChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">E-book Downloads</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="mkKpiEbook">—</div>
+                <div class="kpi-change" id="mkKpiEbookChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Trials</span>
+                    <div class="kpi-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="mkKpiTrials">—</div>
+                <div class="kpi-change" id="mkKpiTrialsChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Trial → Lid %</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="mkKpiConversion">—</div>
+                <div class="kpi-change" id="mkKpiConversionChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Totaal Subscribers</span>
+                    <div class="kpi-icon red">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="mkKpiSubscribers">—</div>
+                <div class="kpi-change" id="mkKpiSubscribersChange"></div>
+            </div>
+        </section>
+
+        <!-- Marketing Charts -->
+        <section class="charts-grid">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">Leads per Maand</h2>
+                    <span class="card-subtitle">Laatste 12 maanden</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mkLeadsChart"></canvas>
+                </div>
+            </div>
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">Lead Bronnen</h2>
+                    <span class="card-subtitle">Verdeling deze maand</span>
+                </div>
+                <div class="chart-container chart-container-donut">
+                    <canvas id="mkSourceDonut"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Funnel Chart -->
+        <section class="charts-grid">
+            <div class="card chart-card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h2 class="card-title">Marketing Funnel</h2>
+                    <span class="card-subtitle">Subscriber groei over tijd</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mkGrowthChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Marketing Bottom -->
+        <section class="bottom-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Lead Bronnen Detail</h2>
+                </div>
+                <div class="membership-list" id="mkSourceList"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" id="mkKerncijfersTitle">Marketing Kerncijfers</h2>
+                </div>
+                <div class="activity-list" id="mkKerncijfersList"></div>
+            </div>
+        </section>
+        </div><!-- /pageMarketing -->
+
+        <!-- === PAGE: Nieuwsbrief === -->
+        <div class="page" id="pageNieuwsbrief">
+
+        <!-- Week Selector -->
+        <section class="nb-week-nav">
+            <button class="nb-week-btn" id="nbPrevWeek" title="Vorige week">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <h2 class="nb-week-title" id="nbWeekTitle">Week 12 — 16 t/m 22 maart 2026</h2>
+            <button class="nb-week-btn" id="nbNextWeek" title="Volgende week">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+        </section>
+
+        <!-- Loading state -->
+        <div class="nb-loading" id="nbLoading">
+            <div class="nb-spinner"></div>
+            <p>Notion data ophalen...</p>
+        </div>
+
+        <!-- Themes of the Week -->
+        <section class="card nb-card" id="nbThemesCard" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title">Thema's van de Week</h2>
+                <span class="card-subtitle" id="nbThemeWeekLabel"></span>
+            </div>
+            <div class="nb-themes-grid" id="nbThemesGrid"></div>
+        </section>
+
+        <!-- Coach Rooster -->
+        <section class="card nb-card" id="nbCoachCard" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title">Coach Rooster</h2>
+                <span class="card-subtitle" id="nbCoachWeekLabel"></span>
+            </div>
+            <div class="nb-table-wrap">
+                <table class="nb-schedule-table" id="nbCoachTable">
+                    <thead id="nbCoachHead"></thead>
+                    <tbody id="nbCoachBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Balie Rooster -->
+        <section class="card nb-card" id="nbBalieCard" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title">Balie Rooster</h2>
+                <span class="card-subtitle" id="nbBalieWeekLabel"></span>
+            </div>
+            <div class="nb-table-wrap">
+                <table class="nb-schedule-table" id="nbBalieTable">
+                    <thead id="nbBalieHead"></thead>
+                    <tbody id="nbBalieBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Newsletter Preview -->
+        <section class="card nb-card" id="nbPreviewCard" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title">Crew Briefing Preview</h2>
+                <div class="nb-preview-actions">
+                    <button class="btn-pdf nb-copy-btn" id="nbCopyBtn" title="Kopieer naar klembord">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>Kopieer</span>
+                    </button>
+                </div>
+            </div>
+            <div class="nb-preview" id="nbPreview"></div>
+        </section>
+
+        </div><!-- /pageNieuwsbrief -->
+
+        <!-- === PAGE: Simulator === -->
+        <div class="page" id="pageSimulator">
+
+        <!-- Simulator Inputs -->
+        <section class="card sim-card">
+            <div class="card-header">
+                <h2 class="card-title">Prijsverhoging instellen</h2>
+            </div>
+            <div class="sim-inputs-grid">
+                <div class="sim-input-group">
+                    <label>Huidige leden</label>
+                    <input type="number" id="simMembers" class="sim-input" value="400">
+                </div>
+                <div class="sim-input-group">
+                    <label>Gem. prijs per lid (€/mnd)</label>
+                    <input type="number" id="simPrice" class="sim-input" step="0.01" value="73">
+                </div>
+                <div class="sim-input-group">
+                    <label>Maandomzet (€)</label>
+                    <input type="text" id="simRevenue" class="sim-input" value="—" readonly style="background: var(--border); cursor: default;">
+                </div>
+                <div class="sim-input-group">
+                    <label>Maandelijkse churn (%)</label>
+                    <input type="number" id="simChurn" class="sim-input" step="0.1" value="5">
+                </div>
+                <div class="sim-input-group">
+                    <label>Nieuwe leden / maand</label>
+                    <input type="number" id="simNewMembers" class="sim-input" value="30">
+                </div>
+                <div class="sim-input-group">
+                    <label>Vaste kosten / maand (€)</label>
+                    <input type="number" id="simFixedCosts" class="sim-input" value="10000">
+                </div>
+                <div class="sim-input-group">
+                    <label>Variabele kosten / lid (€)</label>
+                    <input type="number" id="simVarCost" class="sim-input" step="0.01" value="5">
+                </div>
+            </div>
+            <div class="sim-slider-section">
+                <label class="sim-slider-label">Prijsverhoging: <strong id="simPriceIncLabel">10%</strong></label>
+                <input type="range" id="simPriceInc" class="sim-range" min="0" max="50" step="1" value="10">
+                <div class="sim-range-labels"><span>0%</span><span>25%</span><span>50%</span></div>
+            </div>
+            <div class="sim-scope-section">
+                <label class="sim-slider-label">Toepassen op:</label>
+                <div class="sim-scope-options">
+                    <label class="sim-scope-option"><input type="radio" name="simScope" value="all" checked> <span>Alle leden</span></label>
+                    <label class="sim-scope-option"><input type="radio" name="simScope" value="new_only"> <span>Alleen nieuwe leden</span></label>
+                    <label class="sim-scope-option"><input type="radio" name="simScope" value="phased"> <span>Gefaseerd (12 mnd)</span></label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Scenario Tabs -->
+        <section class="sim-scenarios">
+            <button class="sim-tab" data-scenario="optimistic">Optimistic</button>
+            <button class="sim-tab active" data-scenario="realistic">Realistic</button>
+            <button class="sim-tab" data-scenario="pessimistic">Pessimistic</button>
+            <button class="sim-tab" data-scenario="custom">Custom</button>
+        </section>
+
+        <!-- Custom Parameters (hidden by default) -->
+        <section class="card sim-card sim-custom-params" id="simCustomParams" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title">Custom parameters</h2>
+            </div>
+            <div class="sim-inputs-grid">
+                <div class="sim-input-group">
+                    <label>Price Elasticity</label>
+                    <input type="number" id="simElasticity" class="sim-input" step="0.05" value="-0.20">
+                    <span class="sim-hint">Negatief: hogere prijs → minder leden</span>
+                </div>
+                <div class="sim-input-group">
+                    <label>Churn Sensitivity</label>
+                    <input type="number" id="simChurnSens" class="sim-input" step="0.05" value="0.10">
+                    <span class="sim-hint">Hoeveel extra churn per 10% prijsverhoging</span>
+                </div>
+                <div class="sim-input-group">
+                    <label>New Member Slowdown</label>
+                    <input type="number" id="simSlowdown" class="sim-input" step="0.05" value="0.05">
+                    <span class="sim-hint">Daling nieuwe leden per 10% prijsverhoging</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Warnings -->
+        <div id="simWarnings"></div>
+
+        <!-- Simulator KPI Cards -->
+        <section class="kpi-grid kpi-grid-5">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Nieuwe Prijs</span>
+                    <div class="kpi-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="simKpiNewPrice">—</div>
+                <div class="kpi-change" id="simKpiNewPriceChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Verwacht Ledenverlies</span>
+                    <div class="kpi-icon red">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="11" x2="23" y2="11"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="simKpiLost">—</div>
+                <div class="kpi-change" id="simKpiLostChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Nieuwe Omzet</span>
+                    <div class="kpi-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="simKpiRevenue">—</div>
+                <div class="kpi-change" id="simKpiRevenueChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Nieuwe Churn</span>
+                    <div class="kpi-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="simKpiChurn">—</div>
+                <div class="kpi-change" id="simKpiChurnChange"></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">Break-even Verlies</span>
+                    <div class="kpi-icon red">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                </div>
+                <div class="kpi-value" id="simKpiBreakeven">—</div>
+                <div class="kpi-change" id="simKpiBreakevenChange"></div>
+            </div>
+        </section>
+
+        <!-- Scenario Comparison Table -->
+        <section class="card sim-card">
+            <div class="card-header">
+                <h2 class="card-title">Scenario Vergelijking</h2>
+                <span class="card-subtitle" id="simTableSubtitle">Bij 10% prijsverhoging</span>
+            </div>
+            <div class="sim-table-wrap">
+                <table class="sim-table" id="simTable">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Baseline</th>
+                            <th>Optimistic</th>
+                            <th>Realistic</th>
+                            <th>Pessimistic</th>
+                        </tr>
+                    </thead>
+                    <tbody id="simTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Simulator Charts -->
+        <section class="charts-grid">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">12-maands Leden Forecast</h2>
+                    <span class="card-subtitle">Baseline vs scenario</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="simMembersChart"></canvas>
+                </div>
+            </div>
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h2 class="card-title">12-maands Omzet Forecast</h2>
+                    <span class="card-subtitle">Baseline vs scenario</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="simRevenueChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Revenue vs Price Curve -->
+        <section class="card sim-card">
+            <div class="card-header">
+                <h2 class="card-title">Omzet vs Prijsverhoging</h2>
+                <span class="card-subtitle">Optimale prijspunt vinden</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="simCurveChart"></canvas>
+            </div>
+        </section>
+
+        <div class="sim-disclaimer">
+            Price elasticity models estimate behavior based on assumptions. Real outcomes depend on communication, perceived value, and competition.
+        </div>
+
+        </div><!-- /pageSimulator -->
+
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script src="data.js"></script>
-    <script src="dashboard.js"></script>
+    <script src="jspdf.umd.min.js"></script>
+    <script src="jspdf.plugin.autotable.min.js"></script>
+    <script src="config.js"></script>
+    <script src="data.js?v=8"></script>
+    <script src="dashboard.js?v=8"></script>
 </body>
 </html>

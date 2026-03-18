@@ -24,7 +24,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', simulator: 'Prijssimulator' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -38,6 +38,7 @@ document.querySelectorAll('.nav-link').forEach(link => {
         if (pageEl) pageEl.classList.add('active');
         document.querySelector('.page-title').textContent = PAGE_TITLES[page] || page;
         currentPage = page;
+        document.getElementById('btnPdfRapport').style.display = (page === 'dashboard') ? 'inline-flex' : 'none';
         updateCurrentPage();
         closeSidebar();
     });
@@ -48,6 +49,9 @@ function updateCurrentPage() {
     if (currentPage === 'dashboard') updateDashboard(ym);
     else if (currentPage === 'leden') updateLeden(ym);
     else if (currentPage === 'financien') updateFinancien(ym);
+    else if (currentPage === 'marketing') updateMarketing(ym);
+    else if (currentPage === 'nieuwsbrief') updateNieuwsbrief();
+    else if (currentPage === 'simulator') updateSimulator(ym);
 }
 
 // --- Chart.js Config ---
@@ -117,7 +121,7 @@ selectableMonths.forEach(ym => {
 monthSelect.value = selectableMonths[selectableMonths.length - 1];
 
 // --- Charts (created once, updated on month change) ---
-let revenueChart, donutChart, attendanceChart, financeChart, costDonutChart;
+let revenueChart, donutChart, attendanceChart, financeChart, costDonutChart, mkLeadsChart, mkSourceDonut, mkGrowthChart, simMembersChart, simRevenueChart, simCurveChart;
 
 function createCharts() {
     const revenueCtx = document.getElementById('revenueChart').getContext('2d');
@@ -195,17 +199,17 @@ function updateDashboard(ym) {
     document.querySelector('.page-subtitle').textContent = 'Haven BJJ — ' + monthName + ' ' + year;
 
     // KPI: Actieve Leden
-    const totalLeden = d.total_real || d.total_members_excel || 0;
-    const prevLeden = pd ? (pd.total_real || pd.total_members_excel || 0) : null;
+    const totalLeden = d.total_6cat || d.total_members_excel || 0;
+    const prevLeden = pd ? (pd.total_6cat || pd.total_members_excel || 0) : null;
     document.getElementById('kpiLeden').textContent = fmt(totalLeden);
     const ledenDiff = prevLeden != null ? totalLeden - prevLeden : null;
     setChange(document.getElementById('kpiLedenChange'), ledenDiff,
         (ledenDiff > 0 ? '+' : '') + ledenDiff + ' vs vorige maand', false);
 
-    // KPI: Maandomzet
-    const omzet = d.total_income;
+    // KPI: Maandomzet (Jortt revenue preferred over Excel)
+    const omzet = (d.jortt && d.jortt.revenue) || d.total_income;
     document.getElementById('kpiOmzet').textContent = omzet != null ? fmtEuro(omzet) : '—';
-    const prevOmzet = pd ? pd.total_income : null;
+    const prevOmzet = pd ? ((pd.jortt && pd.jortt.revenue) || pd.total_income) : null;
     if (omzet != null && prevOmzet != null && prevOmzet > 0) {
         const pctChange = ((omzet - prevOmzet) / prevOmzet * 100);
         const sign = pctChange > 0 ? '+' : '';
@@ -241,6 +245,44 @@ function updateDashboard(ym) {
         setChange(document.getElementById('kpiAttritionChange'), null, '', false);
     }
 
+    // KPI: Customer LTV = (gem. omzet per lid over 12 maanden) / gem. attrition over 12 maanden
+    const allKeys = Object.keys(DASHBOARD_DATA).sort();
+    const curIdx = allKeys.indexOf(ym);
+    const t12 = allKeys.slice(Math.max(0, curIdx - 11), curIdx + 1);
+    let sumOmzetPerLid = 0, countOpl = 0, sumAttr = 0, countAttr = 0;
+    t12.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        const mOmzet = (md.jortt && md.jortt.revenue) || md.total_income;
+        const mLeden = md.total_6cat || md.total_members_excel || 0;
+        if (mOmzet != null && mLeden > 0) { sumOmzetPerLid += mOmzet / mLeden; countOpl++; }
+        if (md.attrition != null && md.attrition > 0) { sumAttr += md.attrition; countAttr++; }
+    });
+    const avgOmzetPerLid = countOpl > 0 ? sumOmzetPerLid / countOpl : null;
+    const avgAttrition = countAttr > 0 ? sumAttr / countAttr : null;
+    const ltv = (avgOmzetPerLid != null && avgAttrition != null) ? avgOmzetPerLid / avgAttrition : null;
+    document.getElementById('kpiLTV').textContent = ltv != null ? fmtEuro(ltv) : '—';
+    // Compare with previous 12-month window (shifted 1 month back)
+    const t12prev = allKeys.slice(Math.max(0, curIdx - 12), curIdx);
+    let sumOplP = 0, countOplP = 0, sumAttrP = 0, countAttrP = 0;
+    t12prev.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        const mOmzet = (md.jortt && md.jortt.revenue) || md.total_income;
+        const mLeden = md.total_6cat || md.total_members_excel || 0;
+        if (mOmzet != null && mLeden > 0) { sumOplP += mOmzet / mLeden; countOplP++; }
+        if (md.attrition != null && md.attrition > 0) { sumAttrP += md.attrition; countAttrP++; }
+    });
+    const prevAvgOpl = countOplP > 0 ? sumOplP / countOplP : null;
+    const prevAvgAttr = countAttrP > 0 ? sumAttrP / countAttrP : null;
+    const prevLtv = (prevAvgOpl != null && prevAvgAttr != null) ? prevAvgOpl / prevAvgAttr : null;
+    if (ltv != null && prevLtv != null && prevLtv > 0) {
+        const pctChange = ((ltv - prevLtv) / prevLtv * 100);
+        const sign = pctChange > 0 ? '+' : '';
+        setChange(document.getElementById('kpiLTVChange'), pctChange,
+            sign + pctChange.toFixed(1).replace('.', ',') + '% vs vorige maand', false);
+    } else {
+        setChange(document.getElementById('kpiLTVChange'), null, '', false);
+    }
+
     // Revenue chart — trailing 12 months
     const allSorted = Object.keys(DASHBOARD_DATA).sort();
     const idx = allSorted.indexOf(ym);
@@ -248,11 +290,11 @@ function updateDashboard(ym) {
     const labels = trailing.map(m => MONTH_ABBR[m.split('-')[1]]);
     const omzetData = trailing.map(m => {
         const md = DASHBOARD_DATA[m];
-        return md && md.total_income ? Math.round(md.total_income) : 0;
+        return md ? Math.round((md.jortt && md.jortt.revenue) || md.total_income || 0) : 0;
     });
     const ledenData = trailing.map(m => {
         const md = DASHBOARD_DATA[m];
-        return md ? (md.total_members_excel || md.total_real || 0) : 0;
+        return md ? (md.total_6cat || md.total_members_excel || 0) : 0;
     });
     revenueChart.data.labels = labels;
     revenueChart.data.datasets[0].data = omzetData;
@@ -320,7 +362,7 @@ function updateDashboard(ym) {
     kcHtml += activityItem('cancel',
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
         `<strong>${lostM != null ? lostM : '—'} opzeggingen</strong> in ${monthName}`,
-        net != null ? `Netto: ${net > 0 ? '+' : ''}${net} lid${Math.abs(net) !== 1 ? 'en' : ''}` : '',
+        net != null ? `Netto: ${net > 0 ? '+' : ''}${net} ${Math.abs(net) === 1 ? 'lid' : 'leden'}` : '',
         shortMonth + ' ' + year
     );
 
@@ -463,6 +505,63 @@ function updateLeden(ym) {
     } else {
         setChange(document.getElementById('kpiSessionsChange'), null, '', false);
     }
+
+    // KPI: Trial → Lid %
+    const trialConv = d.trial_to_member;
+    document.getElementById('kpiTrialConversion').textContent = trialConv != null ? fmtPct(trialConv) : '—';
+    const prevTrialConv = pd ? pd.trial_to_member : null;
+    if (trialConv != null && prevTrialConv != null) {
+        const ppChange = (trialConv - prevTrialConv) * 100;
+        const sign = ppChange > 0 ? '+' : '';
+        setChange(document.getElementById('kpiTrialConversionChange'), ppChange,
+            sign + ppChange.toFixed(1).replace('.', ',') + 'pp vs vorige maand', false);
+    } else {
+        setChange(document.getElementById('kpiTrialConversionChange'), null, '', false);
+    }
+
+    // KPI: Nieuwe Leden
+    const newMem = d.new_members;
+    document.getElementById('kpiNewMembers').textContent = newMem != null ? fmt(newMem) : '—';
+    const prevNewMem = pd ? pd.new_members : null;
+    const newMemDiff = (newMem != null && prevNewMem != null) ? newMem - prevNewMem : null;
+    setChange(document.getElementById('kpiNewMembersChange'), newMemDiff,
+        newMemDiff != null ? (newMemDiff > 0 ? '+' : '') + newMemDiff + ' vs vorige maand' : '', false);
+
+    // KPI: Verloren Leden
+    const lostMem = d.lost_members;
+    document.getElementById('kpiLostMembers').textContent = lostMem != null ? fmt(lostMem) : '—';
+    const prevLostMem = pd ? pd.lost_members : null;
+    const lostMemDiff = (lostMem != null && prevLostMem != null) ? lostMem - prevLostMem : null;
+    setChange(document.getElementById('kpiLostMembersChange'), lostMemDiff,
+        lostMemDiff != null ? (lostMemDiff > 0 ? '+' : '') + lostMemDiff + ' vs vorige maand' : '', true);
+
+    // KPI: Length of Engagement (1 / attrition, over 12 maanden)
+    const allKeysLeg = Object.keys(DASHBOARD_DATA).sort();
+    const idxLeg = allKeysLeg.indexOf(ym);
+    const t12Leg = allKeysLeg.slice(Math.max(0, idxLeg - 11), idxLeg + 1);
+    let sumAttrLeg = 0, countAttrLeg = 0;
+    t12Leg.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        if (md.attrition != null && md.attrition > 0) { sumAttrLeg += md.attrition; countAttrLeg++; }
+    });
+    const avgAttrLeg = countAttrLeg > 0 ? sumAttrLeg / countAttrLeg : null;
+    const leg = avgAttrLeg != null && avgAttrLeg > 0 ? 1 / avgAttrLeg : null;
+    document.getElementById('kpiLEG').textContent = leg != null ? leg.toFixed(1).replace('.', ',') + ' mnd' : '—';
+    // Compare with previous 12-month window
+    const t12LegP = allKeysLeg.slice(Math.max(0, idxLeg - 23), Math.max(0, idxLeg - 11));
+    let sumAttrLegP = 0, countAttrLegP = 0;
+    t12LegP.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        if (md.attrition != null && md.attrition > 0) { sumAttrLegP += md.attrition; countAttrLegP++; }
+    });
+    const avgAttrLegP = countAttrLegP > 0 ? sumAttrLegP / countAttrLegP : null;
+    const prevLeg = avgAttrLegP != null && avgAttrLegP > 0 ? 1 / avgAttrLegP : null;
+    if (leg != null && prevLeg != null) {
+        const diff = leg - prevLeg;
+        const sign = diff > 0 ? '+' : '';
+        setChange(document.getElementById('kpiLEGChange'), diff,
+            sign + diff.toFixed(1).replace('.', ',') + ' mnd vs vorige 12 mnd', false);
+    } else { setChange(document.getElementById('kpiLEGChange'), null, '', false); }
 
     // Attendance chart — trailing 12 months
     const allSorted = Object.keys(DASHBOARD_DATA).sort();
@@ -624,9 +723,46 @@ function updateFinancien(ym) {
         setChange(document.getElementById('kpiProfitChange'), pct, (pct > 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + '% vs vorige maand', false);
     } else { setChange(document.getElementById('kpiProfitChange'), null, '', false); }
 
-    // Finance bar chart — trailing 12 months
+    // Helper: calculate EBITDA from jortt data
+    function calcEbitda(jortt) {
+        if (!jortt) return null;
+        const afschr = (jortt.cost_categories && jortt.cost_categories['Afschrijvingen']) || 0;
+        const fin = (jortt.cost_categories && jortt.cost_categories['Financieel']) || 0;
+        return jortt.profit + afschr + fin;
+    }
+
+    // KPI: EBITDA (maand)
+    const ebitda = j ? calcEbitda(j) : null;
+    document.getElementById('kpiEbitda').textContent = ebitda != null ? fmtEuro(ebitda) : '—';
+    const prevEbitda = pj ? calcEbitda(pj) : null;
+    if (ebitda != null && prevEbitda != null && Math.abs(prevEbitda) > 0) {
+        const pct = ((ebitda - prevEbitda) / Math.abs(prevEbitda) * 100);
+        setChange(document.getElementById('kpiEbitdaChange'), pct, (pct > 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + '% vs vorige maand', false);
+    } else { setChange(document.getElementById('kpiEbitdaChange'), null, '', false); }
+
+    // KPI: EBITDA (12 maanden)
     const allSorted = Object.keys(DASHBOARD_DATA).sort();
     const idx = allSorted.indexOf(ym);
+    const t12 = allSorted.slice(Math.max(0, idx - 11), idx + 1);
+    let sumEbitda = 0, countEbitda = 0;
+    t12.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        if (md && md.jortt) { const e = calcEbitda(md.jortt); if (e != null) { sumEbitda += e; countEbitda++; } }
+    });
+    document.getElementById('kpiEbitda12').textContent = countEbitda > 0 ? fmtEuro(sumEbitda) : '—';
+    // Compare with previous 12 months
+    const t12prev = allSorted.slice(Math.max(0, idx - 23), Math.max(0, idx - 11));
+    let sumEbitdaP = 0, countEbitdaP = 0;
+    t12prev.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        if (md && md.jortt) { const e = calcEbitda(md.jortt); if (e != null) { sumEbitdaP += e; countEbitdaP++; } }
+    });
+    if (countEbitda > 0 && countEbitdaP > 0 && Math.abs(sumEbitdaP) > 0) {
+        const pct = ((sumEbitda - sumEbitdaP) / Math.abs(sumEbitdaP) * 100);
+        setChange(document.getElementById('kpiEbitda12Change'), pct, (pct > 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + '% vs vorige 12 mnd', false);
+    } else { setChange(document.getElementById('kpiEbitda12Change'), null, '', false); }
+
+    // Finance bar chart — trailing 12 months
     const trailing = allSorted.slice(Math.max(0, idx - 11), idx + 1);
     const labels = trailing.map(m => MONTH_ABBR[m.split('-')[1]]);
     const revData = trailing.map(m => { const md = DASHBOARD_DATA[m]; return md && md.jortt ? Math.round(md.jortt.revenue) : 0; });
@@ -741,6 +877,921 @@ function activityItem(iconClass, svg, text, detail, time) {
     </div>`;
 }
 
+// === MARKETING ===
+
+function createMarketingCharts() {
+    const ctx1 = document.getElementById('mkLeadsChart');
+    const ctx2 = document.getElementById('mkSourceDonut');
+    const ctx3 = document.getElementById('mkGrowthChart');
+    if (!ctx1 || !ctx2 || !ctx3) return;
+
+    mkLeadsChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'E-book', data: [], backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4, stack: 'leads' },
+                { label: 'Trials', data: [], backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4, stack: 'leads' },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 16 } } },
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, beginAtZero: true }
+            }
+        }
+    });
+
+    mkSourceDonut = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['E-book', 'Trials'],
+            datasets: [{ data: [0, 0], backgroundColor: ['#10b981', '#6366f1'], borderWidth: 0, hoverOffset: 6 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 14 } } }
+        }
+    });
+
+    mkGrowthChart = new Chart(ctx3, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Totaal Subscribers', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)', fill: true, tension: 0.3, pointRadius: 3 },
+                { label: 'Nieuwe Signups', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', fill: true, tension: 0.3, pointRadius: 3, yAxisID: 'y1' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 16 } } },
+            scales: {
+                y: { beginAtZero: false, title: { display: true, text: 'Totaal' } },
+                y1: { position: 'right', beginAtZero: true, title: { display: true, text: 'Nieuw' }, grid: { drawOnChartArea: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+function updateMarketing(ym) {
+    if (!mkLeadsChart) createMarketingCharts();
+
+    const d = DASHBOARD_DATA[ym];
+    const mc = MAILCHIMP_DATA[ym] || {};
+
+    // Leads from Mailchimp (excluding members = already customers)
+    const leads = (mc.signups || 0) - (mc.member || 0);
+    const ebookCount = mc.ebook || 0;
+    // Trials from DASHBOARD_DATA (Excel source)
+    const trialCount = d ? (d.trials || 0) : 0;
+
+    // Trial → Lid % from DASHBOARD_DATA
+    const trialConv = d && d.trial_to_member != null ? d.trial_to_member : null;
+
+    // Previous month for change
+    const prevYm = getPrevYm(ym);
+    const prevMc = MAILCHIMP_DATA[prevYm] || {};
+    const prevD = DASHBOARD_DATA[prevYm];
+    const prevLeads = (prevMc.signups || 0) - (prevMc.member || 0);
+    const prevTrials = prevD ? (prevD.trials || 0) : 0;
+
+    // Cumulative subscribers calculation
+    const allYms = Object.keys(MAILCHIMP_DATA).sort();
+    let cumSubs = 0;
+    for (const m of allYms) {
+        const md = MAILCHIMP_DATA[m];
+        cumSubs += (md.signups || 0) - (md.unsubscribes || 0) - (md.cleaned || 0);
+        if (m === ym) break;
+    }
+    // Prev month cumulative
+    let prevCumSubs = 0;
+    for (const m of allYms) {
+        if (m === ym) break;
+        const md = MAILCHIMP_DATA[m];
+        prevCumSubs += (md.signups || 0) - (md.unsubscribes || 0) - (md.cleaned || 0);
+    }
+
+    // KPIs
+    setText('mkKpiLeads', leads);
+    setChange('mkKpiLeadsChange', leads, prevLeads);
+    setText('mkKpiEbook', ebookCount);
+    setChange('mkKpiEbookChange', ebookCount, prevMc.ebook || 0);
+    setText('mkKpiTrials', trialCount);
+    setChange('mkKpiTrialsChange', trialCount, prevTrials);
+    setText('mkKpiConversion', trialConv != null ? (trialConv * 100).toFixed(1).replace('.', ',') + '%' : '—');
+    if (trialConv != null) {
+        const prevConv = prevD && prevD.trial_to_member != null ? prevD.trial_to_member : null;
+        if (prevConv != null) {
+            const ppDiff = (trialConv - prevConv) * 100;
+            setChangeRaw('mkKpiConversionChange', ppDiff, ppDiff.toFixed(1).replace('.', ',') + 'pp');
+        } else {
+            document.getElementById('mkKpiConversionChange').textContent = '';
+        }
+    }
+    setText('mkKpiSubscribers', fmt(cumSubs));
+    setChange('mkKpiSubscribersChange', cumSubs, prevCumSubs);
+
+    // Leads stacked bar chart — last 12 months
+    const months12 = getLast12(ym);
+    const labels12 = months12.map(m => MONTH_ABBR[m.slice(5)]);
+    const ebookData = months12.map(m => (MAILCHIMP_DATA[m] || {}).ebook || 0);
+    const trialData = months12.map(m => (DASHBOARD_DATA[m] || {}).trials || 0);
+
+    mkLeadsChart.data.labels = labels12;
+    mkLeadsChart.data.datasets[0].data = ebookData;
+    mkLeadsChart.data.datasets[1].data = trialData;
+    mkLeadsChart.update();
+
+    // Source donut
+    mkSourceDonut.data.datasets[0].data = [ebookCount, trialCount];
+    mkSourceDonut.update();
+
+    // Growth chart — cumulative subscribers + signups per month
+    const cumData = [];
+    const signupData = [];
+    let running = 0;
+    for (const m of allYms) {
+        if (m > ym) break;
+        const md = MAILCHIMP_DATA[m];
+        running += (md.signups || 0) - (md.unsubscribes || 0) - (md.cleaned || 0);
+        // Only show last 12 months in chart
+        if (months12.includes(m)) {
+            cumData.push(running);
+            signupData.push(md.signups || 0);
+        }
+    }
+    mkGrowthChart.data.labels = labels12;
+    mkGrowthChart.data.datasets[0].data = cumData;
+    mkGrowthChart.data.datasets[1].data = signupData;
+    mkGrowthChart.update();
+
+    // Source detail list
+    const sourceList = document.getElementById('mkSourceList');
+    const totalLeads = ebookCount + trialCount;
+    const sources = [
+        { name: 'E-book Downloads', count: ebookCount, color: '#10b981' },
+        { name: 'Trials', count: trialCount, color: '#6366f1' },
+    ];
+    sourceList.innerHTML = sources.map(s => {
+        const pct = totalLeads > 0 ? ((s.count / totalLeads) * 100) : 0;
+        return `<div class="membership-item">
+            <div class="membership-info">
+                <div class="membership-dot" style="background:${s.color}"></div>
+                <div><div class="membership-name">${s.name}</div><div class="membership-price">${pct.toFixed(0)}% van leads</div></div>
+            </div>
+            <div class="membership-stats">
+                <span class="membership-count">${s.count}</span>
+                <div class="membership-bar"><div class="membership-bar-fill" style="width:${pct}%; background:${s.color}"></div></div>
+            </div>
+        </div>`;
+    }).join('');
+
+    // Marketing kerncijfers
+    const mkList = document.getElementById('mkKerncijfersList');
+    // 12-month averages
+    const avg12Leads = months12.reduce((s, m) => s + ((MAILCHIMP_DATA[m] || {}).signups || 0) - ((MAILCHIMP_DATA[m] || {}).member || 0), 0) / months12.length;
+    const avg12Ebook = months12.reduce((s, m) => s + ((MAILCHIMP_DATA[m] || {}).ebook || 0), 0) / months12.length;
+    const avg12Trial = months12.reduce((s, m) => s + ((DASHBOARD_DATA[m] || {}).trials || 0), 0) / months12.length;
+    // Conversion averages from DASHBOARD_DATA
+    const convValues = months12.map(m => (DASHBOARD_DATA[m] || {}).trial_to_member).filter(v => v != null);
+    const avg12Conv = convValues.length > 0 ? convValues.reduce((a, b) => a + b, 0) / convValues.length : null;
+    // New members & lost members from DASHBOARD_DATA
+    const newMembers = d ? (d.new_members_excel || 0) : 0;
+    const lostMembers = d ? (d.lost || 0) : 0;
+    const items = [
+        { icon: 'new-member', label: 'Gem. leads/mnd (12m)', value: avg12Leads.toFixed(0) },
+        { icon: 'payment', label: 'Gem. e-book/mnd (12m)', value: avg12Ebook.toFixed(0) },
+        { icon: 'class-event', label: 'Gem. trials/mnd (12m)', value: avg12Trial.toFixed(0) },
+        { icon: 'new-member', label: 'Gem. conversie (12m)', value: avg12Conv != null ? (avg12Conv * 100).toFixed(1).replace('.', ',') + '%' : '—' },
+        { icon: 'payment', label: 'Nieuwe leden deze maand', value: newMembers },
+        { icon: 'cancel', label: 'Verloren leden deze maand', value: lostMembers },
+    ];
+    mkList.innerHTML = items.map(i => `<div class="activity-item">
+        <div class="activity-icon ${i.icon}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div>
+        <div class="activity-info"><span class="activity-text">${i.label}</span></div>
+        <span class="activity-time">${i.value}</span>
+    </div>`).join('');
+}
+
+// Helper: get previous month ym
+function getPrevYm(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    const pm = m === 1 ? 12 : m - 1;
+    const py = m === 1 ? y - 1 : y;
+    return `${py}-${String(pm).padStart(2, '0')}`;
+}
+
+// Helper: set text
+function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+}
+
+// Helper: set change badge
+function setChange(id, cur, prev) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (prev === 0 && cur === 0) { el.textContent = ''; return; }
+    const diff = cur - prev;
+    const sign = diff > 0 ? '+' : '';
+    el.textContent = `${sign}${diff} vs vorige maand`;
+    el.className = 'kpi-change ' + (diff > 0 ? 'positive' : diff < 0 ? 'negative' : '');
+}
+
+// Helper: set change with custom text
+function setChangeRaw(id, diff, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const sign = diff > 0 ? '+' : '';
+    el.textContent = `${sign}${text} vs vorige maand`;
+    el.className = 'kpi-change ' + (diff > 0 ? 'positive' : diff < 0 ? 'negative' : '');
+}
+
+// Helper: get last 12 months as array of ym strings
+function getLast12(ym) {
+    const allYms = Object.keys(DASHBOARD_DATA).sort();
+    const idx = allYms.indexOf(ym);
+    if (idx < 0) return allYms.slice(-12);
+    const start = Math.max(0, idx - 11);
+    return allYms.slice(start, idx + 1);
+}
+
+// === SIMULATOR ===
+
+const SIM_SCENARIOS = {
+    optimistic: { elasticity: -0.10, churnSens: 0.05, slowdown: 0.03 },
+    realistic:    { elasticity: -0.20, churnSens: 0.10, slowdown: 0.05 },
+    pessimistic:   { elasticity: -0.35, churnSens: 0.20, slowdown: 0.10 }
+};
+
+const SIM_PRICES = {
+    'Monthly': 99, 'Yearly': 73,
+    'Monthly Student': 87, 'Yearly Student': 59,
+    'Monthly U18': 87, 'Yearly U18': 59
+};
+
+let simCurrentScenario = 'realistic';
+let simInitialized = false;
+
+function createSimulatorCharts() {
+    if (simMembersChart) return;
+    // Revenue vs Price curve chart
+    simCurveChart = new Chart(document.getElementById('simCurveChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: [], datasets: [
+            { label: 'Omzet', data: [], borderColor: '#6366f1', backgroundColor: '#6366f118', borderWidth: 2, pointRadius: 4, fill: true, tension: 0.3, yAxisID: 'y' },
+            { label: 'Leden', data: [], borderColor: '#10b981', backgroundColor: '#10b98118', borderWidth: 2, pointRadius: 4, fill: false, tension: 0.3, yAxisID: 'y1' }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                y: { position: 'left', title: { display: true, text: 'Omzet (€)' }, ticks: { callback: v => '€' + Math.round(v).toLocaleString('nl-NL') } },
+                y1: { position: 'right', title: { display: true, text: 'Leden' }, grid: { drawOnChartArea: false } }
+            }
+        }
+    });
+    const baseDS = (label, color, dash) => ({
+        label, data: [], borderColor: color, backgroundColor: color + '18',
+        borderWidth: 2, borderDash: dash || [], pointRadius: 2, fill: false, tension: 0.3
+    });
+    simMembersChart = new Chart(document.getElementById('simMembersChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: [], datasets: [
+            baseDS('Baseline', '#94a3b8', [5, 5]),
+            baseDS('Optimistic', '#10b981'),
+            baseDS('Realistic', '#6366f1'),
+            baseDS('Pessimistic', '#ef4444')
+        ]},
+        options: { responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: false, title: { display: true, text: 'Leden' } } }
+        }
+    });
+    simRevenueChart = new Chart(document.getElementById('simRevenueChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: [], datasets: [
+            baseDS('Baseline', '#94a3b8', [5, 5]),
+            baseDS('Optimistic', '#10b981'),
+            baseDS('Realistic', '#6366f1'),
+            baseDS('Pessimistic', '#ef4444')
+        ]},
+        options: { responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: false, title: { display: true, text: 'Omzet (€)' },
+                ticks: { callback: v => '€' + Math.round(v).toLocaleString('nl-NL') } } }
+        }
+    });
+}
+
+function calcWeightedPrice(categories) {
+    if (!categories) return 73;
+    let totalMembers = 0, totalWeighted = 0;
+    for (const [cat, count] of Object.entries(categories)) {
+        if (cat === 'Overig' || !SIM_PRICES[cat]) continue;
+        totalMembers += count;
+        totalWeighted += count * SIM_PRICES[cat];
+    }
+    return totalMembers > 0 ? totalWeighted / totalMembers : 73;
+}
+
+function runScenario(params, scenario) {
+    const { currentMembers, currentPrice, currentRevenue, currentChurn, newMembersPerMonth, fixedCosts, varCost, priceInc, scope } = params;
+    const { elasticity, churnSens, slowdown } = scenario;
+
+    const newPrice = currentPrice * (1 + priceInc / 100);
+
+    // Scope multiplier: "all" = full impact, "new_only" = 20% impact, "phased" = 50% impact
+    const scopeMultiplier = scope === 'new_only' ? 0.2 : scope === 'phased' ? 0.5 : 1.0;
+
+    // Immediate member change from elasticity ONLY (no churn double-counting)
+    const expectedMemberChangePct = elasticity * (priceInc / 100) * scopeMultiplier;
+    const expectedMembersAfter = Math.max(0, Math.round(currentMembers * (1 + expectedMemberChangePct)));
+    const expectedLost = currentMembers - expectedMembersAfter;
+
+    // Revenue: use blended price for phased/new_only
+    const effectivePrice = scope === 'new_only' ? currentPrice : scope === 'phased' ? currentPrice * (1 + priceInc / 200) : newPrice;
+    const projRevenue = expectedMembersAfter * effectivePrice;
+    const revDelta = projRevenue - currentRevenue;
+    const revDeltaPct = currentRevenue > 0 ? (revDelta / currentRevenue) * 100 : 0;
+
+    // Churn is for forecast only, not immediate
+    const additionalChurn = currentChurn * churnSens * (priceInc / 10) * scopeMultiplier;
+    const projChurn = currentChurn + additionalChurn;
+    const projNewMembers = Math.max(0, Math.round(newMembersPerMonth * (1 - slowdown * (priceInc / 10))));
+
+    // Break-even: max members lost before revenue drops
+    const memberRevenue = currentMembers * currentPrice;
+    const breakEvenMembers = memberRevenue / effectivePrice;
+    const maxLostBeforeDrop = currentMembers - breakEvenMembers;
+    const maxLostPct = currentMembers > 0 ? (maxLostBeforeDrop / currentMembers) * 100 : 0;
+
+    // 12-month forecast (churn applied here, NOT in immediate calc)
+    const forecast = [];
+    let members = expectedMembersAfter;
+    // For phased: price gradually shifts to newPrice over 12 months
+    for (let i = 0; i < 12; i++) {
+        const lost = members * (projChurn / 100);
+        members = Math.max(0, members - lost + projNewMembers);
+        const monthPrice = scope === 'phased' ? currentPrice + (newPrice - currentPrice) * ((i + 1) / 12) : scope === 'new_only' ? currentPrice + (newPrice - currentPrice) * Math.min(1, (i + 1) * projNewMembers / members) : newPrice;
+        const rev = members * monthPrice;
+        const costs = fixedCosts + members * varCost;
+        forecast.push({ month: i + 1, members: Math.round(members), revenue: Math.round(rev), costs: Math.round(costs), profit: Math.round(rev - costs) });
+    }
+
+    return { newPrice, effectivePrice, expectedLost, expectedMembersAfter, projRevenue, revDelta, revDeltaPct, projChurn, projNewMembers, breakEvenMembers: Math.round(breakEvenMembers), maxLostBeforeDrop: Math.round(maxLostBeforeDrop), maxLostPct, forecast };
+}
+
+function runBaseline(params) {
+    const { currentMembers, currentPrice, currentRevenue, currentChurn, newMembersPerMonth, fixedCosts, varCost } = params;
+    const forecast = [];
+    let members = currentMembers;
+    for (let i = 0; i < 12; i++) {
+        const lost = members * (currentChurn / 100);
+        members = Math.max(0, members - lost + newMembersPerMonth);
+        const rev = members * currentPrice;
+        forecast.push({ month: i + 1, members: Math.round(members), revenue: Math.round(rev) });
+    }
+    return { forecast };
+}
+
+function getSimParams() {
+    const members = parseFloat(document.getElementById('simMembers').value) || 0;
+    const price = parseFloat(document.getElementById('simPrice').value) || 0;
+    const revenue = Math.round(members * price);
+    // Update the read-only revenue field
+    document.getElementById('simRevenue').value = '€' + revenue.toLocaleString('nl-NL');
+    return {
+        currentMembers: members,
+        currentPrice: price,
+        currentRevenue: revenue,
+        currentChurn: parseFloat(document.getElementById('simChurn').value) || 0,
+        newMembersPerMonth: parseFloat(document.getElementById('simNewMembers').value) || 0,
+        fixedCosts: parseFloat(document.getElementById('simFixedCosts').value) || 0,
+        varCost: parseFloat(document.getElementById('simVarCost').value) || 0,
+        priceInc: parseFloat(document.getElementById('simPriceInc').value) || 0,
+        scope: document.querySelector('input[name="simScope"]:checked').value
+    };
+}
+
+function getScenarioParams() {
+    if (simCurrentScenario === 'custom') {
+        return {
+            elasticity: parseFloat(document.getElementById('simElasticity').value) || -0.20,
+            churnSens: parseFloat(document.getElementById('simChurnSens').value) || 0.10,
+            slowdown: parseFloat(document.getElementById('simSlowdown').value) || 0.05
+        };
+    }
+    return SIM_SCENARIOS[simCurrentScenario];
+}
+
+function recalcSimulator() {
+    const params = getSimParams();
+    const scenario = getScenarioParams();
+    const result = runScenario(params, scenario);
+    const baseline = runBaseline(params);
+    const allResults = {};
+    for (const [name, sc] of Object.entries(SIM_SCENARIOS)) {
+        allResults[name] = runScenario(params, sc);
+    }
+
+    // Update slider label
+    document.getElementById('simPriceIncLabel').textContent = params.priceInc + '%';
+
+    // KPI cards
+    document.getElementById('simKpiNewPrice').textContent = '€' + result.newPrice.toFixed(2).replace('.', ',');
+    setChange(document.getElementById('simKpiNewPriceChange'), params.priceInc, '+' + params.priceInc + '% vs huidig', false);
+
+    document.getElementById('simKpiLost').textContent = fmt(result.expectedLost);
+    const lostPct = params.currentMembers > 0 ? (result.expectedLost / params.currentMembers * 100).toFixed(1).replace('.', ',') : '0';
+    setChange(document.getElementById('simKpiLostChange'), -result.expectedLost, lostPct + '% van leden', true);
+
+    document.getElementById('simKpiRevenue').textContent = fmtEuro(result.projRevenue);
+    const sign = result.revDeltaPct > 0 ? '+' : '';
+    setChange(document.getElementById('simKpiRevenueChange'), result.revDeltaPct, sign + result.revDeltaPct.toFixed(1).replace('.', ',') + '% vs huidig', false);
+
+    document.getElementById('simKpiChurn').textContent = result.projChurn.toFixed(1).replace('.', ',') + '%';
+    const churnDiff = result.projChurn - params.currentChurn;
+    setChange(document.getElementById('simKpiChurnChange'), churnDiff, '+' + churnDiff.toFixed(1).replace('.', ',') + 'pp vs huidig', true);
+
+    document.getElementById('simKpiBreakeven').textContent = fmt(result.maxLostBeforeDrop) + ' leden';
+    setChange(document.getElementById('simKpiBreakevenChange'), null, 'max ' + result.maxLostPct.toFixed(1).replace('.', ',') + '% voordat omzet daalt', false);
+
+    // Warnings
+    const warnings = [];
+    if (result.revDeltaPct < 0) warnings.push('Omzet daalt met ' + Math.abs(result.revDeltaPct).toFixed(1).replace('.', ',') + '% bij dit scenario');
+    if (result.projChurn > params.currentChurn * 2) warnings.push('Churn rate verdubbelt (van ' + params.currentChurn.toFixed(1) + '% naar ' + result.projChurn.toFixed(1) + '%)');
+    if (result.expectedLost > result.maxLostBeforeDrop) warnings.push('Verwacht ledenverlies (' + result.expectedLost + ') overschrijdt break-even punt (' + result.maxLostBeforeDrop + ')');
+    const warnEl = document.getElementById('simWarnings');
+    warnEl.innerHTML = warnings.map(w =>
+        '<div class="sim-warning"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' + w + '</div>'
+    ).join('');
+
+    // Scenario table
+    document.getElementById('simTableSubtitle').textContent = 'Bij ' + params.priceInc + '% prijsverhoging';
+    const rows = [
+        ['Nieuwe prijs', '€' + params.currentPrice.toFixed(2).replace('.', ','), ...['optimistic', 'realistic', 'pessimistic'].map(s => '€' + allResults[s].newPrice.toFixed(2).replace('.', ','))],
+        ['Ledenverlies', '0', ...['optimistic', 'realistic', 'pessimistic'].map(s => fmt(allResults[s].expectedLost))],
+        ['Leden na verhoging', fmt(params.currentMembers), ...['optimistic', 'realistic', 'pessimistic'].map(s => fmt(allResults[s].expectedMembersAfter))],
+        ['Maandomzet', fmtEuro(params.currentRevenue), ...['optimistic', 'realistic', 'pessimistic'].map(s => fmtEuro(allResults[s].projRevenue))],
+        ['Omzet verschil', '—', ...['optimistic', 'realistic', 'pessimistic'].map(s => {
+            const d = allResults[s].revDeltaPct;
+            const cls = d >= 0 ? 'positive' : 'negative';
+            return '<span class="' + cls + '">' + (d > 0 ? '+' : '') + d.toFixed(1).replace('.', ',') + '%</span>';
+        })],
+        ['Churn rate', params.currentChurn.toFixed(1).replace('.', ',') + '%', ...['optimistic', 'realistic', 'pessimistic'].map(s => allResults[s].projChurn.toFixed(1).replace('.', ',') + '%')],
+        ['Nieuwe leden/mnd', fmt(params.newMembersPerMonth), ...['optimistic', 'realistic', 'pessimistic'].map(s => fmt(allResults[s].projNewMembers))],
+        ['Leden na 12 mnd', fmt(baseline.forecast[11].members), ...['optimistic', 'realistic', 'pessimistic'].map(s => fmt(allResults[s].forecast[11].members))],
+        ['Omzet mnd 12', fmtEuro(baseline.forecast[11].revenue), ...['optimistic', 'realistic', 'pessimistic'].map(s => fmtEuro(allResults[s].forecast[11].revenue))]
+    ];
+    document.getElementById('simTableBody').innerHTML = rows.map(r =>
+        '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td><td>' + r[4] + '</td></tr>'
+    ).join('');
+
+    // Charts
+    const labels = Array.from({ length: 12 }, (_, i) => 'Mnd ' + (i + 1));
+    simMembersChart.data.labels = labels;
+    simMembersChart.data.datasets[0].data = baseline.forecast.map(f => f.members);
+    simMembersChart.data.datasets[1].data = allResults.optimistic.forecast.map(f => f.members);
+    simMembersChart.data.datasets[2].data = allResults.realistic.forecast.map(f => f.members);
+    simMembersChart.data.datasets[3].data = allResults.pessimistic.forecast.map(f => f.members);
+    simMembersChart.update();
+
+    simRevenueChart.data.labels = labels;
+    simRevenueChart.data.datasets[0].data = baseline.forecast.map(f => f.revenue);
+    simRevenueChart.data.datasets[1].data = allResults.optimistic.forecast.map(f => f.revenue);
+    simRevenueChart.data.datasets[2].data = allResults.realistic.forecast.map(f => f.revenue);
+    simRevenueChart.data.datasets[3].data = allResults.pessimistic.forecast.map(f => f.revenue);
+    simRevenueChart.update();
+
+    // Revenue vs Price curve
+    const curveSteps = [0, 2, 5, 7, 10, 12, 15, 20, 25, 30];
+    const curveLabels = curveSteps.map(s => '+' + s + '%');
+    const curveRevenue = [];
+    const curveMembers = [];
+    curveSteps.forEach(inc => {
+        const p = { ...params, priceInc: inc };
+        const r = runScenario(p, scenario);
+        curveRevenue.push(Math.round(r.projRevenue));
+        curveMembers.push(r.expectedMembersAfter);
+    });
+    simCurveChart.data.labels = curveLabels;
+    simCurveChart.data.datasets[0].data = curveRevenue;
+    simCurveChart.data.datasets[1].data = curveMembers;
+    simCurveChart.update();
+}
+
+function updateSimulator(ym) {
+    const d = DASHBOARD_DATA[ym];
+    if (!d) return;
+    const [year, month] = ym.split('-');
+    const monthName = MONTH_NAMES[month];
+    document.querySelector('.page-subtitle').textContent = 'Haven BJJ — ' + monthName + ' ' + year;
+
+    createSimulatorCharts();
+
+    // Trailing 12 months for averages
+    const allKeys = Object.keys(DASHBOARD_DATA).sort();
+    const curIdx = allKeys.indexOf(ym);
+    const t12 = allKeys.slice(Math.max(0, curIdx - 11), curIdx + 1);
+
+    // All inputs based on 12-month averages for consistency
+    let sumPrice = 0, countPrice = 0;
+    let sumChurn = 0, countChurn = 0;
+    let sumNewMem = 0, countNewMem = 0;
+    let sumCosts = 0, countCosts = 0;
+    let sumMembers = 0, countMembers = 0;
+    t12.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        if (md.categories) { sumPrice += calcWeightedPrice(md.categories); countPrice++; }
+        if (md.attrition != null && md.attrition > 0) { sumChurn += md.attrition * 100; countChurn++; }
+        if (md.new_members != null) { sumNewMem += md.new_members; countNewMem++; }
+        if (md.jortt && md.jortt.costs) { sumCosts += md.jortt.costs; countCosts++; }
+        const mMembers = md.total_6cat || md.total_members_excel || 0;
+        if (mMembers > 0) { sumMembers += mMembers; countMembers++; }
+    });
+    const avgPrice = countPrice > 0 ? sumPrice / countPrice : 73;
+    const churn = countChurn > 0 ? sumChurn / countChurn : 5;
+    const newMem = countNewMem > 0 ? Math.round(sumNewMem / countNewMem) : 30;
+    const avgCosts = countCosts > 0 ? sumCosts / countCosts : 0;
+    const avgMembers = countMembers > 0 ? Math.round(sumMembers / countMembers) : 300;
+    const fixedCosts = avgCosts > 0 ? Math.round(avgCosts * 0.7) : 10000;
+    const varCost = (avgCosts > 0 && avgMembers > 0) ? Math.round(avgCosts * 0.3 / avgMembers * 100) / 100 : 5;
+    // Revenue = members × price (consistent baseline)
+    const avgRevenue = Math.round(avgMembers * avgPrice);
+
+    document.getElementById('simMembers').value = avgMembers;
+    document.getElementById('simPrice').value = avgPrice.toFixed(2);
+    document.getElementById('simChurn').value = churn.toFixed(1);
+    document.getElementById('simNewMembers').value = newMem;
+    document.getElementById('simFixedCosts').value = fixedCosts;
+    document.getElementById('simVarCost').value = varCost;
+
+    recalcSimulator();
+}
+
+// Simulator event listeners
+document.getElementById('simPriceInc').addEventListener('input', recalcSimulator);
+['simMembers', 'simPrice', 'simChurn', 'simNewMembers', 'simFixedCosts', 'simVarCost'].forEach(id => {
+    document.getElementById(id).addEventListener('input', recalcSimulator);
+});
+['simElasticity', 'simChurnSens', 'simSlowdown'].forEach(id => {
+    document.getElementById(id).addEventListener('input', recalcSimulator);
+});
+document.querySelectorAll('input[name="simScope"]').forEach(r => {
+    r.addEventListener('change', recalcSimulator);
+});
+
+document.querySelectorAll('.sim-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.sim-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        simCurrentScenario = tab.dataset.scenario;
+        document.getElementById('simCustomParams').style.display = simCurrentScenario === 'custom' ? '' : 'none';
+        recalcSimulator();
+    });
+});
+
+// === PDF RAPPORT ===
+
+function generatePDFReport() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const ym = monthSelect.value;
+    const d = DASHBOARD_DATA[ym];
+    if (!d) return;
+
+    const pym = prevYm(ym);
+    const pd = DASHBOARD_DATA[pym];
+    const [year, month] = ym.split('-');
+    const monthName = MONTH_NAMES[month];
+    const margin = 15;
+    const pageW = 210;
+    const contentW = pageW - 2 * margin;
+    let y = margin;
+
+    // Disable button during generation
+    const btn = document.getElementById('btnPdfRapport');
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Genereren...';
+
+    // --- Helpers ---
+    function checkPage(needed) {
+        if (y + needed > 280) {
+            doc.addPage();
+            y = 20;
+        }
+    }
+
+    function sectionTitle(text) {
+        checkPage(14);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(99, 102, 241); // indigo
+        doc.text(text, margin, y);
+        y += 2;
+        doc.setDrawColor(99, 102, 241);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, margin + contentW, y);
+        y += 7;
+        doc.setTextColor(15, 23, 42); // dark
+    }
+
+    function valOrDash(v, prefix, suffix) {
+        if (v == null || isNaN(v)) return '—';
+        return (prefix || '') + Math.round(v).toLocaleString('nl-NL') + (suffix || '');
+    }
+
+    // --- HEADER ---
+    // Logo square
+    doc.setFillColor(99, 102, 241);
+    doc.roundedRect(margin, y, 14, 14, 3, 3, 'F');
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('H', margin + 4.8, y + 10);
+
+    // Title
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Haven BJJ', margin + 18, y + 6);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Maandrapport', margin + 18, y + 12);
+
+    // Right side: month + date
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    const titleRight = monthName.charAt(0).toUpperCase() + monthName.slice(1) + ' ' + year;
+    doc.text(titleRight, pageW - margin, y + 6, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    const now = new Date();
+    doc.text('Gegenereerd: ' + now.toLocaleDateString('nl-NL') + ' ' + now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }), pageW - margin, y + 12, { align: 'right' });
+
+    y += 18;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, margin + contentW, y);
+    y += 8;
+
+    // --- KPI SUMMARY ---
+    sectionTitle('Kerngetallen');
+
+    const totalLeden = d.total_6cat || d.total_members_excel || 0;
+    const prevLeden = pd ? (pd.total_6cat || pd.total_members_excel || 0) : null;
+    const omzet = (d.jortt && d.jortt.revenue) || d.total_income;
+    const prevOmzet = pd ? ((pd.jortt && pd.jortt.revenue) || pd.total_income) : null;
+    const trials = d.trials;
+    const prevTrials = pd ? pd.trials : null;
+    const attrition = d.attrition;
+    const prevAttrition = pd ? pd.attrition : null;
+
+    // LTV calculation
+    const allKeys = Object.keys(DASHBOARD_DATA).sort();
+    const curIdx = allKeys.indexOf(ym);
+    const t12 = allKeys.slice(Math.max(0, curIdx - 11), curIdx + 1);
+    let sumOpl = 0, cOpl = 0, sumAttr = 0, cAttr = 0;
+    t12.forEach(m => {
+        const md = DASHBOARD_DATA[m];
+        const mOmzet = (md.jortt && md.jortt.revenue) || md.total_income;
+        const mLeden = md.total_6cat || md.total_members_excel || 0;
+        if (mOmzet != null && mLeden > 0) { sumOpl += mOmzet / mLeden; cOpl++; }
+        if (md.attrition != null && md.attrition > 0) { sumAttr += md.attrition; cAttr++; }
+    });
+    const ltv = (cOpl > 0 && cAttr > 0) ? (sumOpl / cOpl) / (sumAttr / cAttr) : null;
+
+    function changeText(cur, prev, suffix, pct) {
+        if (cur == null || prev == null) return '—';
+        if (pct && prev > 0) {
+            const ch = ((cur - prev) / prev * 100);
+            return (ch > 0 ? '+' : '') + ch.toFixed(1).replace('.', ',') + '%';
+        }
+        const diff = cur - prev;
+        return (diff > 0 ? '+' : '') + Math.round(diff).toLocaleString('nl-NL') + (suffix || '');
+    }
+
+    const kpiData = [
+        ['Actieve Leden', fmt(totalLeden), changeText(totalLeden, prevLeden, '')],
+        ['Maandomzet', valOrDash(omzet, '€'), changeText(omzet, prevOmzet, '', true)],
+        ['Trials', trials != null ? fmt(trials) : '—', changeText(trials, prevTrials, '', true)],
+        ['Attrition Rate', attrition != null ? (attrition * 100).toFixed(1).replace('.', ',') + '%' : '—',
+            attrition != null && prevAttrition != null ? ((attrition - prevAttrition) * 100 > 0 ? '+' : '') + ((attrition - prevAttrition) * 100).toFixed(1).replace('.', ',') + 'pp' : '—'],
+        ['Customer LTV', ltv != null ? valOrDash(ltv, '€') : '—', '—']
+    ];
+
+    doc.autoTable({
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['KPI', 'Waarde', 'Verandering']],
+        body: kpiData,
+        theme: 'striped',
+        headStyles: { fillColor: [99, 102, 241], font: 'helvetica', fontStyle: 'bold', fontSize: 10 },
+        bodyStyles: { font: 'helvetica', fontSize: 10, textColor: [15, 23, 42] },
+        alternateRowStyles: { fillColor: [241, 245, 249] },
+        columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 50 },
+            1: { halign: 'right', cellWidth: 50 },
+            2: { halign: 'right', cellWidth: 50 }
+        },
+        styles: { cellPadding: 4 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+
+    // --- REVENUE CHART ---
+    sectionTitle('Omzet & Leden — Laatste 12 maanden');
+
+    try {
+        const revCanvas = document.getElementById('revenueChart');
+        const revImg = revCanvas.toDataURL('image/png');
+        checkPage(70);
+        doc.addImage(revImg, 'PNG', margin, y, contentW, 60);
+        y += 64;
+    } catch (e) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(148, 163, 184);
+        doc.text('Chart niet beschikbaar', margin, y + 5);
+        y += 12;
+    }
+
+    // Revenue data table (for AI readability)
+    checkPage(50);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Ruwe data (voor analyse):', margin, y);
+    y += 4;
+
+    const trailing = allKeys.slice(Math.max(0, curIdx - 11), curIdx + 1);
+    const trendBody = trailing.map(m => {
+        const md = DASHBOARD_DATA[m];
+        const mOmzet = (md.jortt && md.jortt.revenue) || md.total_income;
+        const mLeden = md.total_6cat || md.total_members_excel || 0;
+        const [ty, tm] = m.split('-');
+        return [MONTH_ABBR[tm] + ' ' + ty, valOrDash(mOmzet, '€'), fmt(mLeden)];
+    });
+
+    doc.autoTable({
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Maand', 'Omzet', 'Leden']],
+        body: trendBody,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [100, 116, 139], font: 'helvetica', fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { font: 'helvetica', fontSize: 8, textColor: [15, 23, 42], cellPadding: 2.5 },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+
+    // --- PAGE 2: MEMBERSHIP ---
+    doc.addPage();
+    y = 20;
+
+    sectionTitle('Ledenverdeling per Abonnement');
+
+    // Donut chart
+    try {
+        const donutCanvas = document.getElementById('membersChart');
+        const donutImg = donutCanvas.toDataURL('image/png');
+        checkPage(65);
+        const imgW = 90;
+        doc.addImage(donutImg, 'PNG', margin + (contentW - imgW) / 2, y, imgW, 55);
+        y += 59;
+    } catch (e) {
+        y += 5;
+    }
+
+    // Membership breakdown table
+    if (d.categories) {
+        const cats = d.categories;
+        const catTotal = Object.values(cats).reduce((a, b) => a + b, 0);
+        const catBody = Object.entries(cats).map(([name, count]) => {
+            const pct = catTotal > 0 ? ((count / catTotal) * 100).toFixed(1).replace('.', ',') + '%' : '—';
+            return [name, String(count), pct];
+        });
+
+        doc.autoTable({
+            startY: y,
+            margin: { left: margin, right: margin },
+            head: [['Categorie', 'Aantal', 'Percentage']],
+            body: catBody,
+            theme: 'striped',
+            headStyles: { fillColor: [99, 102, 241], font: 'helvetica', fontStyle: 'bold', fontSize: 10 },
+            bodyStyles: { font: 'helvetica', fontSize: 10, textColor: [15, 23, 42] },
+            alternateRowStyles: { fillColor: [241, 245, 249] },
+            columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+            styles: { cellPadding: 4 }
+        });
+        y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // --- KERNCIJFERS ---
+    sectionTitle('Kerncijfers');
+
+    const newMem = d.new_members != null ? d.new_members : (d.new_members_excel || null);
+    const lostMem = d.lost_members != null ? d.lost_members : (d.lost || null);
+    const nettoGroei = (newMem != null && lostMem != null) ? newMem - lostMem : null;
+    const trialConv = d.trial_to_member;
+    const omzetPerLid = d.income_per_member || (omzet && totalLeden > 0 ? omzet / totalLeden : null);
+    const zettle = d.zettle;
+
+    // Biggest category
+    let bigCat = '—', bigCount = 0;
+    if (d.categories) {
+        Object.entries(d.categories).forEach(([name, cnt]) => {
+            if (cnt > bigCount) { bigCat = name; bigCount = cnt; }
+        });
+    }
+
+    const kcData = [
+        ['Nieuwe leden', newMem != null ? fmt(newMem) : '—'],
+        ['Opzeggingen', lostMem != null ? fmt(lostMem) : '—'],
+        ['Netto groei', nettoGroei != null ? (nettoGroei > 0 ? '+' : '') + fmt(nettoGroei) : '—'],
+        ['Grootste categorie', bigCat + (bigCount > 0 ? ' (' + bigCount + ')' : '')],
+        ['Omzet per lid', valOrDash(omzetPerLid, '€')],
+        ['Trial → lid conversie', trialConv != null ? trialConv.toFixed(1).replace('.', ',') + '%' : '—'],
+        ['Zettle omzet', valOrDash(zettle, '€')]
+    ];
+
+    doc.autoTable({
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Metriek', 'Waarde']],
+        body: kcData,
+        theme: 'striped',
+        headStyles: { fillColor: [99, 102, 241], font: 'helvetica', fontStyle: 'bold', fontSize: 10 },
+        bodyStyles: { font: 'helvetica', fontSize: 10, textColor: [15, 23, 42] },
+        alternateRowStyles: { fillColor: [241, 245, 249] },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 }, 1: { halign: 'right' } },
+        styles: { cellPadding: 4 }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+
+    // --- 12-MONTH TREND TABLE (AI readable) ---
+    sectionTitle('Trenddata — Laatste 12 maanden');
+
+    const fullTrendBody = trailing.map(m => {
+        const md = DASHBOARD_DATA[m];
+        const mOmzet = (md.jortt && md.jortt.revenue) || md.total_income;
+        const mLeden = md.total_6cat || md.total_members_excel || 0;
+        const mTrials = md.trials;
+        const mAttr = md.attrition;
+        const mNew = md.new_members != null ? md.new_members : (md.new_members_excel || null);
+        const mLost = md.lost_members != null ? md.lost_members : (md.lost || null);
+        const [ty, tm] = m.split('-');
+        return [
+            MONTH_ABBR[tm] + ' ' + ty,
+            fmt(mLeden),
+            valOrDash(mOmzet, '€'),
+            mTrials != null ? fmt(mTrials) : '—',
+            mAttr != null ? (mAttr * 100).toFixed(1).replace('.', ',') + '%' : '—',
+            mNew != null ? fmt(mNew) : '—',
+            mLost != null ? fmt(mLost) : '—'
+        ];
+    });
+
+    doc.autoTable({
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Maand', 'Leden', 'Omzet', 'Trials', 'Attrition', 'Nieuw', 'Verloren']],
+        body: fullTrendBody,
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241], font: 'helvetica', fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { font: 'helvetica', fontSize: 8, textColor: [15, 23, 42], cellPadding: 2.5 },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } }
+    });
+
+    // --- FOOTERS ---
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.text('Haven BJJ — Maandrapport ' + monthName + ' ' + year, margin, 290);
+        doc.text('Pagina ' + i + ' van ' + totalPages, pageW - margin, 290, { align: 'right' });
+    }
+
+    // --- SAVE ---
+    const capMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    doc.save('Haven_BJJ_Rapport_' + capMonth + '_' + year + '.pdf');
+
+    // Re-enable button
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'PDF Rapport';
+}
+
 // --- Init ---
 createCharts();
 createAttendanceChart();
@@ -749,4 +1800,456 @@ updateDashboard(monthSelect.value);
 
 monthSelect.addEventListener('change', () => {
     updateCurrentPage();
+});
+
+// =============================================
+// === NIEUWSBRIEF ASSISTENT ===
+// =============================================
+
+const NB_PROXY = (typeof NOTION_CONFIG !== 'undefined') ? NOTION_CONFIG.PROXY_URL : 'http://localhost:3002';
+const NB_PAGES = (typeof NOTION_CONFIG !== 'undefined') ? NOTION_CONFIG.PAGES : {};
+
+// State
+let nbCurrentWeekOffset = 0; // 0 = this week, -1 = last week, +1 = next week
+let nbCache = { themes: null, coaches: null, balie: null };
+let nbDataLoaded = false;
+
+// Column headers for themes table
+const NB_THEME_COLS = ['Week', 'Fundamentals main', 'Fundamentals revisit', 'Mixed levels main', 'Mixed levels standing', 'Kids main', 'Kids standing'];
+
+// Get Monday of a given week offset from today
+function nbGetWeekMonday(offset) {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = (day === 0 ? -6 : 1 - day); // Monday
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff + (offset * 7));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+}
+
+function nbFormatDate(d) {
+    return d.getDate() + '/' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function nbGetWeekTitle(offset) {
+    const monday = nbGetWeekMonday(offset);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const weekNum = nbGetISOWeek(monday);
+    const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    return `Week ${weekNum} — ${monday.getDate()} t/m ${sunday.getDate()} ${months[monday.getMonth()]} ${monday.getFullYear()}`;
+}
+
+function nbGetISOWeek(d) {
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+// Fetch blocks from Notion proxy
+async function nbFetchBlocks(blockId) {
+    const resp = await fetch(`${NB_PROXY}/blocks/${blockId}/children`);
+    if (!resp.ok) throw new Error('Notion fetch failed: ' + resp.status);
+    const data = await resp.json();
+    return data.results || [];
+}
+
+// Parse table rows from Notion blocks
+function nbParseTable(blocks) {
+    return blocks.filter(b => b.type === 'table_row').map(b => {
+        return b.table_row.cells.map(cell =>
+            cell.map(t => t.plain_text).join('').trim()
+        );
+    });
+}
+
+// Fetch all Notion data
+async function nbFetchAllData() {
+    if (nbDataLoaded && nbCache.themes && nbCache.coaches && nbCache.balie) return;
+
+    // Fetch all three pages in parallel
+    const [themesBlocks, coachBlocks, balieBlocks] = await Promise.all([
+        nbFetchBlocks(NB_PAGES.THEMES),
+        nbFetchBlocks(NB_PAGES.COACHES),
+        nbFetchBlocks(NB_PAGES.BALIE)
+    ]);
+
+    // Parse themes: collect table block IDs with labels, then fetch all table rows in parallel
+    const tableEntries = [];
+    let currentLabel = '';
+    for (const block of themesBlocks) {
+        if (block.type === 'paragraph') {
+            const text = (block.paragraph.rich_text || []).map(t => t.plain_text).join('').trim();
+            if (text) currentLabel = text;
+        } else if (block.type === 'table' && block.has_children) {
+            tableEntries.push({ label: currentLabel, id: block.id });
+        }
+    }
+    const tableRows = await Promise.all(tableEntries.map(e => nbFetchBlocks(e.id)));
+    nbCache.themes = tableEntries.map((e, i) => ({ label: e.label, rows: nbParseTable(tableRows[i]) }));
+
+    // Coaches & balie pages
+    nbCache.coachPages = coachBlocks.filter(b => b.type === 'child_page');
+    nbCache.coaches = {};
+    nbCache.baliePages = balieBlocks.filter(b => b.type === 'child_page');
+    nbCache.balie = {};
+
+    nbDataLoaded = true;
+}
+
+// Find the right month page for coaches/balie
+const MONTH_MAP = { 0: 'Jan', 1: 'Feb', 2: 'March', 3: 'April', 4: 'May', 5: 'June', 6: 'July', 7: 'Aug', 8: 'Sep', 9: 'Oct', 10: 'Nov', 11: 'Dec' };
+const MONTH_ALIASES = {
+    'jan': 'jan', 'january': 'jan', 'januari': 'jan',
+    'feb': 'feb', 'february': 'feb', 'februari': 'feb',
+    'march': 'march', 'mar': 'march', 'maart': 'march',
+    'april': 'april', 'apr': 'april',
+    'may': 'may', 'mei': 'may',
+    'june': 'june', 'jun': 'june', 'juni': 'june',
+    'july': 'july', 'jul': 'july', 'juli': 'july',
+    'aug': 'aug', 'august': 'aug', 'augustus': 'aug',
+    'sep': 'sep', 'september': 'sep',
+    'oct': 'oct', 'october': 'oct', 'oktober': 'oct',
+    'nov': 'nov', 'november': 'nov',
+    'dec': 'dec', 'december': 'dec'
+};
+
+async function nbFetchMonthSchedule(cache, pages, cacheKey, monthName) {
+    const key = monthName.toLowerCase();
+    if (cache[key]) return cache[key];
+
+    // Find matching page
+    const page = pages.find(p => {
+        const title = p.child_page.title.toLowerCase();
+        return title === key || MONTH_ALIASES[title] === MONTH_ALIASES[key];
+    });
+    if (!page) return null;
+
+    // Fetch page content, then all table rows in parallel
+    const blocks = await nbFetchBlocks(page.id);
+    const tableBlocks = blocks.filter(b => b.type === 'table' && b.has_children);
+    const allRows = await Promise.all(tableBlocks.map(b => nbFetchBlocks(b.id)));
+    const tables = allRows.map(rows => nbParseTable(rows)).filter(t => t.length > 0 && t[0].length > 1);
+    cache[key] = tables;
+    return tables;
+}
+
+// Match a week's dates to a schedule table (coaches/balie)
+function nbFindWeekInSchedule(tables, monday) {
+    if (!tables) return null;
+    const monDate = nbFormatDate(monday); // e.g. "16/03"
+    const monDateAlt = monday.getDate().toString().padStart(2, '0') + '-' + String(monday.getMonth() + 1).padStart(2, '0'); // "16-03"
+    const monDay = monday.getDate().toString(); // "16"
+
+    for (const table of tables) {
+        // Each table has weekly blocks separated by empty rows
+        // The first row of each block has dates, e.g. ['', '16/03', '17/03', ...]
+        for (let i = 0; i < table.length; i++) {
+            const row = table[i];
+            // Check if any cell matches the Monday date
+            const dateMatch = row.some(cell => {
+                const c = cell.trim();
+                return c === monDate || c === monDateAlt ||
+                       c === monDate.replace(/^0/, '') || c === monDateAlt.replace(/^0/, '') ||
+                       (c.includes('/') && c.split('/')[0] === monDay && parseInt(c.split('/')[1]) === monday.getMonth() + 1) ||
+                       (c.includes('-') && c.split('-')[0] === monDay && parseInt(c.split('-')[1]) === monday.getMonth() + 1);
+            });
+
+            if (dateMatch) {
+                // Collect rows until empty row or end
+                const weekRows = [];
+                for (let j = i; j < table.length; j++) {
+                    const r = table[j];
+                    if (j > i && r.every(c => !c.trim())) break;
+                    weekRows.push(r);
+                }
+                return weekRows;
+            }
+        }
+    }
+    return null;
+}
+
+// Find theme for the current week
+function nbFindThemeForWeek(monday) {
+    if (!nbCache.themes) return null;
+    const weekNum = nbGetISOWeek(monday);
+    const month = monday.getMonth(); // 0-indexed
+    const year = monday.getFullYear();
+
+    // Determine month name and approximate week within month
+    const monthNames = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const mName = monthNames[month].toLowerCase();
+
+    // Calculate week of month (1-based)
+    const firstOfMonth = new Date(year, month, 1);
+    const firstMonday = new Date(firstOfMonth);
+    const dayOfWeek = firstOfMonth.getDay();
+    firstMonday.setDate(firstOfMonth.getDate() + (dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek));
+    const weekOfMonth = Math.ceil((monday.getDate() - firstMonday.getDate() + firstMonday.getDate()) / 7);
+    const actualWeekNum = Math.floor((monday.getDate() - 1) / 7) + 1;
+
+    // Search through all theme tables
+    for (const table of nbCache.themes) {
+        for (const row of table.rows) {
+            const label = row[0].toLowerCase().trim();
+            // Match patterns like "march week 3", "feb week 1", "april week 2"
+            const match = label.match(/(\w+)\s+week\s+(\d+)/);
+            if (match) {
+                const tMonth = match[1].toLowerCase();
+                const tWeek = parseInt(match[2]);
+                if ((tMonth === mName || tMonth === mName.substring(0, 3)) && tWeek === actualWeekNum) {
+                    return { label: row[0], cols: row.slice(1) };
+                }
+            }
+        }
+    }
+    return null;
+}
+
+// Render the Nieuwsbrief page
+async function updateNieuwsbrief() {
+    const title = document.getElementById('nbWeekTitle');
+    const loading = document.getElementById('nbLoading');
+    const themesCard = document.getElementById('nbThemesCard');
+    const coachCard = document.getElementById('nbCoachCard');
+    const balieCard = document.getElementById('nbBalieCard');
+    const previewCard = document.getElementById('nbPreviewCard');
+
+    title.textContent = nbGetWeekTitle(nbCurrentWeekOffset);
+
+    // Show loading
+    loading.style.display = 'flex';
+    themesCard.style.display = 'none';
+    coachCard.style.display = 'none';
+    balieCard.style.display = 'none';
+    previewCard.style.display = 'none';
+
+    try {
+        await nbFetchAllData();
+
+        const monday = nbGetWeekMonday(nbCurrentWeekOffset);
+        const monthNames = ['jan', 'feb', 'march', 'april', 'may', 'june', 'july', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        const mName = monthNames[monday.getMonth()];
+
+        // Themes
+        const theme = nbFindThemeForWeek(monday);
+        if (theme) {
+            const grid = document.getElementById('nbThemesGrid');
+            const labels = NB_THEME_COLS.slice(1); // Skip 'Week'
+            grid.innerHTML = theme.cols.map((val, i) => `
+                <div class="nb-theme-item">
+                    <div class="nb-theme-label">${labels[i] || 'Slot ' + (i + 1)}</div>
+                    <div class="nb-theme-value">${val || '—'}</div>
+                </div>
+            `).join('');
+            document.getElementById('nbThemeWeekLabel').textContent = theme.label;
+            themesCard.style.display = '';
+        }
+
+        // Coaches & Balie in parallel
+        const [coachTables, balieTables] = await Promise.all([
+            nbFetchMonthSchedule(nbCache.coaches, nbCache.coachPages || [], 'coaches', mName),
+            nbFetchMonthSchedule(nbCache.balie, nbCache.baliePages || [], 'balie', mName)
+        ]);
+        const coachWeek = nbFindWeekInSchedule(coachTables, monday);
+        if (coachWeek && coachWeek.length > 1) {
+            nbRenderScheduleTable('nbCoachHead', 'nbCoachBody', coachWeek, monday);
+            document.getElementById('nbCoachWeekLabel').textContent = nbFormatDate(monday) + ' t/m ' + nbFormatDate(new Date(monday.getTime() + 6 * 86400000));
+            coachCard.style.display = '';
+        }
+
+        const balieWeek = nbFindWeekInSchedule(balieTables, monday);
+        if (balieWeek && balieWeek.length > 1) {
+            nbRenderScheduleTable('nbBalieHead', 'nbBalieBody', balieWeek, monday);
+            document.getElementById('nbBalieWeekLabel').textContent = nbFormatDate(monday) + ' t/m ' + nbFormatDate(new Date(monday.getTime() + 6 * 86400000));
+            balieCard.style.display = '';
+        }
+
+        // Generate newsletter preview
+        nbGeneratePreview(theme, coachWeek, balieWeek, monday);
+        previewCard.style.display = '';
+
+    } catch (err) {
+        console.error('Nieuwsbrief error:', err);
+        loading.innerHTML = `<p style="color: var(--danger);">Fout bij ophalen data: ${err.message}</p>
+            <p style="font-size: 13px; color: var(--text-secondary);">Zorg dat de Notion proxy draait: <code>python3 notion-proxy.py</code></p>`;
+        return;
+    }
+
+    loading.style.display = 'none';
+}
+
+function nbRenderScheduleTable(headId, bodyId, rows, monday) {
+    const thead = document.getElementById(headId);
+    const tbody = document.getElementById(bodyId);
+
+    // First row is dates, second is days
+    const dateRow = rows[0];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Build header (dates + days combined)
+    let headerHtml = '<tr><th></th>';
+    const dayNames = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+    for (let i = 1; i < dateRow.length; i++) {
+        if (!dateRow[i].trim()) continue;
+        headerHtml += `<th>${dateRow[i]}</th>`;
+    }
+    headerHtml += '</tr>';
+    thead.innerHTML = headerHtml;
+
+    // Body rows (skip date row and day-name row)
+    let bodyHtml = '';
+    for (let r = 2; r < rows.length; r++) {
+        const row = rows[r];
+        if (row.every(c => !c.trim())) continue;
+        bodyHtml += '<tr>';
+        for (let c = 0; c < row.length; c++) {
+            if (c >= dateRow.length) continue;
+            if (c > 0 && !dateRow[c].trim()) continue;
+            if (c === 0) {
+                bodyHtml += `<td>${row[c]}</td>`;
+            } else {
+                bodyHtml += `<td>${row[c] || '—'}</td>`;
+            }
+        }
+        bodyHtml += '</tr>';
+    }
+    tbody.innerHTML = bodyHtml;
+}
+
+// Build an HTML table from schedule week data
+function nbBuildScheduleHtml(weekData) {
+    if (!weekData || weekData.length < 3) return '';
+    const dateRow = weekData[0];
+    const dayRow = weekData[1];
+    const ts = 'style="border-collapse:collapse;width:100%;font-family:Inter,sans-serif;font-size:13px;"';
+    const ths = 'style="padding:8px 10px;background:#f1f5f9;border:1px solid #e2e8f0;font-weight:600;text-align:center;font-size:12px;"';
+    const tds = 'style="padding:8px 10px;border:1px solid #e2e8f0;text-align:center;"';
+    const td1s = 'style="padding:8px 10px;border:1px solid #e2e8f0;font-weight:600;background:#f8fafc;"';
+
+    let t = `<table ${ts}><thead><tr><th ${ths}></th>`;
+    for (let c = 1; c < dateRow.length; c++) {
+        if (!dateRow[c].trim()) continue;
+        const day = dayRow[c] || '';
+        t += `<th ${ths}>${day}<br>${dateRow[c]}</th>`;
+    }
+    t += '</tr></thead><tbody>';
+    for (let r = 2; r < weekData.length; r++) {
+        const row = weekData[r];
+        if (row.every(c => !c.trim())) continue;
+        t += `<tr><td ${td1s}>${row[0]}</td>`;
+        for (let c = 1; c < dateRow.length; c++) {
+            if (!dateRow[c].trim()) continue;
+            t += `<td ${tds}>${row[c] || '—'}</td>`;
+        }
+        t += '</tr>';
+    }
+    t += '</tbody></table>';
+    return t;
+}
+
+function nbGeneratePreview(theme, coachWeek, balieWeek, monday) {
+    const preview = document.getElementById('nbPreview');
+    const sun = new Date(monday);
+    sun.setDate(monday.getDate() + 6);
+    const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+
+    let html = `<h3>Haven BJJ — Weekupdate</h3>`;
+    html += `<p>Week ${nbGetISOWeek(monday)} | ${monday.getDate()} t/m ${sun.getDate()} ${months[monday.getMonth()]} ${monday.getFullYear()}</p>`;
+
+    html += `<hr class="nb-section-divider">`;
+    html += `<h3>Desk Announcement</h3>`;
+    html += `<p style="color:#64748b;font-style:italic;">Important for the desk</p>`;
+
+    html += `<hr class="nb-section-divider">`;
+    html += `<h3>Coaches Announcement</h3>`;
+    html += `<p style="color:#64748b;font-style:italic;">Important for the coaches</p>`;
+
+    if (theme) {
+        html += `<hr class="nb-section-divider">`;
+        html += `<h3>Thema's van de Week</h3>`;
+        const labels = NB_THEME_COLS.slice(1);
+        html += '<table style="border-collapse:collapse;font-family:Inter,sans-serif;font-size:13px;">';
+        theme.cols.forEach((val, i) => {
+            if (val) html += `<tr><td style="padding:4px 12px 4px 0;font-weight:600;color:#64748b;">${labels[i] || 'Slot ' + (i+1)}</td><td style="padding:4px 0;">${val}</td></tr>`;
+        });
+        html += '</table>';
+    }
+
+    if (coachWeek && coachWeek.length > 2) {
+        html += `<hr class="nb-section-divider">`;
+        html += `<h3>Coach Rooster</h3>`;
+        html += nbBuildScheduleHtml(coachWeek);
+    }
+
+    if (balieWeek && balieWeek.length > 2) {
+        html += `<hr class="nb-section-divider">`;
+        html += `<h3>Balie Rooster</h3>`;
+        html += nbBuildScheduleHtml(balieWeek);
+    }
+
+    // Class structure templates
+    if (theme) {
+        const mixedMain = theme.cols[2] || '—';
+        const mixedStanding = theme.cols[3] || '—';
+        const kidsMain = theme.cols[4] || '—';
+        const kidsStanding = theme.cols[5] || '—';
+
+        html += `<hr class="nb-section-divider">`;
+        html += `<h3>Example of a Mixed Class</h3>`;
+        html += `<p>${mixedStanding} 1: Show how to defend and counter the front headlock position<br>`;
+        html += `${mixedMain} 1:<br>`;
+        html += `${mixedMain} 2:<br>`;
+        html += `${mixedMain} 3:</p>`;
+        html += `<p>Rest of the class: Free sparring, start seated vs standing OR standing vs standing for advanced students if there is enough space.</p>`;
+
+        html += `<hr class="nb-section-divider">`;
+        html += `<h3>Example Kids Class</h3>`;
+        html += `<p><strong>Warm-up</strong><br>`;
+        html += `- Movement drills in lines (rolls, animal movements)<br>`;
+        html += `- Shadow wrestling<br>`;
+        html += `- Getting on top drills</p>`;
+        html += `<p><strong>Technique</strong><br>`;
+        html += `- ${kidsStanding} game:<br>`;
+        html += `- ${kidsMain} technique<br>`;
+        html += `- ${kidsMain} game</p>`;
+        html += `<p>Free sparring<br>Stretching</p>`;
+    }
+
+    html += `<hr class="nb-section-divider">`;
+    html += `<h3>Birthdays</h3>`;
+    html += `<p>Every member that comes to train on their birthday gets a free drink of their choice. Coffee, protein shake, pre-workout shot, isotonic, Beer with Benefits, whatever they want. Also, make sure to congratulate them when you see them</p>`;
+
+    preview.innerHTML = html;
+}
+
+// Week nav buttons
+document.getElementById('nbPrevWeek')?.addEventListener('click', () => {
+    nbCurrentWeekOffset--;
+    updateNieuwsbrief();
+});
+document.getElementById('nbNextWeek')?.addEventListener('click', () => {
+    nbCurrentWeekOffset++;
+    updateNieuwsbrief();
+});
+
+// Copy button
+document.getElementById('nbCopyBtn')?.addEventListener('click', () => {
+    const preview = document.getElementById('nbPreview');
+    const html = preview.innerHTML;
+    const text = preview.innerText;
+    const blob = new Blob([html], { type: 'text/html' });
+    const textBlob = new Blob([text], { type: 'text/plain' });
+    navigator.clipboard.write([
+        new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })
+    ]).then(() => {
+        const btn = document.getElementById('nbCopyBtn');
+        btn.querySelector('span').textContent = 'Gekopieerd!';
+        setTimeout(() => btn.querySelector('span').textContent = 'Kopieer', 2000);
+    });
 });

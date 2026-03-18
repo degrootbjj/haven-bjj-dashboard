@@ -13,3 +13,4 @@ data.demo.js
 # Server scripts
 server.py
 server.rb
+config.js
