@@ -241,10 +241,10 @@ function updateDashboard(ym) {
         setChange(document.getElementById('kpiOmzetChange'), null, '', false);
     }
 
-    // KPI: Trials
-    const trials = d.trials;
+    // KPI: Trials (adults + u18)
+    const trials = (d.trials != null || d.trials_u18 != null) ? (d.trials || 0) + (d.trials_u18 || 0) : null;
     document.getElementById('kpiTrials').textContent = trials != null ? fmt(trials) : '—';
-    const prevTrials = pd ? pd.trials : null;
+    const prevTrials = (pd && (pd.trials != null || pd.trials_u18 != null)) ? (pd.trials || 0) + (pd.trials_u18 || 0) : null;
     if (trials != null && prevTrials != null && prevTrials > 0) {
         const pctChange = ((trials - prevTrials) / prevTrials * 100);
         const sign = pctChange > 0 ? '+' : '';
@@ -969,7 +969,7 @@ function updateMarketing(ym) {
     const leads = (mc.signups || 0) - (mc.member || 0);
     const ebookCount = mc.ebook || 0;
     // Trials from DASHBOARD_DATA (Excel source)
-    const trialCount = d ? (d.trials || 0) : 0;
+    const trialCount = d ? (d.trials || 0) + (d.trials_u18 || 0) : 0;
 
     // Trial → Lid % from DASHBOARD_DATA
     const trialConv = d && d.trial_to_member != null ? d.trial_to_member : null;
@@ -979,7 +979,7 @@ function updateMarketing(ym) {
     const prevMc = MAILCHIMP_DATA[prevYm] || {};
     const prevD = DASHBOARD_DATA[prevYm];
     const prevLeads = (prevMc.signups || 0) - (prevMc.member || 0);
-    const prevTrials = prevD ? (prevD.trials || 0) : 0;
+    const prevTrials = prevD ? (prevD.trials || 0) + (prevD.trials_u18 || 0) : 0;
 
     // Cumulative subscribers calculation
     const allYms = Object.keys(MAILCHIMP_DATA).sort();
@@ -1003,6 +1003,12 @@ function updateMarketing(ym) {
     setText('mkKpiEbook', ebookCount);
     setChange('mkKpiEbookChange', ebookCount, prevMc.ebook || 0);
     setText('mkKpiTrials', trialCount);
+    const splitEl = document.getElementById('mkKpiTrialsSplit');
+    if (splitEl && d) {
+        const adults = d.trials || 0;
+        const u18 = d.trials_u18 || 0;
+        splitEl.textContent = (adults || u18) ? `Adults: ${adults} · U18: ${u18}` : '';
+    }
     setChange('mkKpiTrialsChange', trialCount, prevTrials);
     setText('mkKpiConversion', trialConv != null ? (trialConv * 100).toFixed(1).replace('.', ',') + '%' : '—');
     if (trialConv != null) {
@@ -1021,7 +1027,7 @@ function updateMarketing(ym) {
     const months12 = getLast12(ym);
     const labels12 = months12.map(m => MONTH_ABBR[m.slice(5)]);
     const ebookData = months12.map(m => (MAILCHIMP_DATA[m] || {}).ebook || 0);
-    const trialData = months12.map(m => (DASHBOARD_DATA[m] || {}).trials || 0);
+    const trialData = months12.map(m => { const dd = DASHBOARD_DATA[m] || {}; return (dd.trials || 0) + (dd.trials_u18 || 0); });
 
     mkLeadsChart.data.labels = labels12;
     mkLeadsChart.data.datasets[0].data = ebookData;
@@ -1077,7 +1083,7 @@ function updateMarketing(ym) {
     // 12-month averages
     const avg12Leads = months12.reduce((s, m) => s + ((MAILCHIMP_DATA[m] || {}).signups || 0) - ((MAILCHIMP_DATA[m] || {}).member || 0), 0) / months12.length;
     const avg12Ebook = months12.reduce((s, m) => s + ((MAILCHIMP_DATA[m] || {}).ebook || 0), 0) / months12.length;
-    const avg12Trial = months12.reduce((s, m) => s + ((DASHBOARD_DATA[m] || {}).trials || 0), 0) / months12.length;
+    const avg12Trial = months12.reduce((s, m) => { const dd = DASHBOARD_DATA[m] || {}; return s + (dd.trials || 0) + (dd.trials_u18 || 0); }, 0) / months12.length;
     // Conversion averages from DASHBOARD_DATA
     const convValues = months12.map(m => (DASHBOARD_DATA[m] || {}).trial_to_member).filter(v => v != null);
     const avg12Conv = convValues.length > 0 ? convValues.reduce((a, b) => a + b, 0) / convValues.length : null;
@@ -1574,8 +1580,8 @@ function generatePDFReport() {
     const prevLeden = pd ? (pd.total_6cat || pd.total_members_excel || 0) : null;
     const omzet = (d.jortt && d.jortt.revenue) || d.total_income;
     const prevOmzet = pd ? ((pd.jortt && pd.jortt.revenue) || pd.total_income) : null;
-    const trials = d.trials;
-    const prevTrials = pd ? pd.trials : null;
+    const trials = (d.trials != null || d.trials_u18 != null) ? (d.trials || 0) + (d.trials_u18 || 0) : null;
+    const prevTrials = (pd && (pd.trials != null || pd.trials_u18 != null)) ? (pd.trials || 0) + (pd.trials_u18 || 0) : null;
     const attrition = d.attrition;
     const prevAttrition = pd ? pd.attrition : null;
 
@@ -1767,7 +1773,7 @@ function generatePDFReport() {
         const md = DASHBOARD_DATA[m];
         const mOmzet = (md.jortt && md.jortt.revenue) || md.total_income;
         const mLeden = md.total_6cat || md.total_members_excel || 0;
-        const mTrials = md.trials;
+        const mTrials = (md.trials != null || md.trials_u18 != null) ? (md.trials || 0) + (md.trials_u18 || 0) : null;
         const mAttr = md.attrition;
         const mNew = md.new_members != null ? md.new_members : (md.new_members_excel || null);
         const mLost = md.lost_members != null ? md.lost_members : (md.lost || null);

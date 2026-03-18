@@ -495,6 +495,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                     </div>
                 </div>
                 <div class="kpi-value" id="mkKpiTrials">—</div>
+                <div class="kpi-split" id="mkKpiTrialsSplit"></div>
                 <div class="kpi-change" id="mkKpiTrialsChange"></div>
             </div>
             <div class="kpi-card">
