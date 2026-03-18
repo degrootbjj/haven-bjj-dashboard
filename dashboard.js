@@ -2461,7 +2461,7 @@ function renderUploadPreview(ym) {
 
     // Build the entry
     const totalMembers = gribLeden?.total_members || null;
-    const trials = (trialsAdults || trialsU18) ? (trialsAdults || 0) + (trialsU18 || 0) : null;
+    const trials = trialsAdults || null;
     const lost = gribVerloren?.lost || null;
     const newMembers = gribNieuw?.new_members || null;
     const newMembersExcel = gribNieuw?.new_members_excel || null;
