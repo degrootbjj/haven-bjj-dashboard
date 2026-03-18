@@ -2457,6 +2457,10 @@ function renderUploadPreview(ym) {
             const d = row['startDate'] ?? row['startdate'] ?? row['StartDate'] ?? '';
             return toYM(d) === ym && isRealMembership(row);
         });
+        // DEBUG: log subscription types being counted
+        const debugTypes = {};
+        filtered.forEach(r => { const s = r['subscription'] || '?'; debugTypes[s] = (debugTypes[s] || 0) + 1; });
+        console.log('Grib Nieuw — gefilterd op', ym, '— types:', debugTypes, '— totaal:', filtered.length);
         gribNieuw = { new_members: filtered.length, new_members_excel: filtered.length };
     }
 
@@ -2468,6 +2472,10 @@ function renderUploadPreview(ym) {
             const d = row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? '';
             return toYM(d) === ym && isRealMembership(row);
         });
+        // DEBUG: log subscription types being counted
+        const debugTypes = {};
+        filtered.forEach(r => { const s = r['subscription'] || '?'; debugTypes[s] = (debugTypes[s] || 0) + 1; });
+        console.log('Grib Verloren — gefilterd op', ym, '— types:', debugTypes, '— totaal:', filtered.length);
         gribVerloren = { lost: filtered.length, lost_members: filtered.length };
     }
 
