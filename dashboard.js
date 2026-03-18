@@ -2431,13 +2431,25 @@ function renderUploadPreview(ym) {
         gribLeden = parseGribLeden(data);
     }
 
+    // Helper: convert Excel date (serial number, Date object, or string) to "YYYY-MM" string
+    function toYM(val) {
+        if (!val && val !== 0) return '';
+        if (val instanceof Date) return val.toISOString().slice(0, 7);
+        if (typeof val === 'number') {
+            // Excel serial date → JS Date
+            const d = new Date((val - 25569) * 86400000);
+            return d.toISOString().slice(0, 7);
+        }
+        return val.toString().slice(0, 7);
+    }
+
     let gribNieuw = null;
     if (uploadState.gribNieuw) {
         const rows = uploadState.gribNieuw.type === 'xlsx' ? uploadState.gribNieuw.rows : csvToRows(uploadState.gribNieuw.text);
         // Filter on startDate matching selected month (YYYY-MM)
         const filtered = rows.filter(row => {
-            const d = (row['startDate'] || row['startdate'] || row['StartDate'] || '').toString();
-            return d.startsWith(ym);
+            const d = row['startDate'] ?? row['startdate'] ?? row['StartDate'] ?? '';
+            return toYM(d) === ym;
         });
         gribNieuw = { new_members: filtered.length, new_members_excel: filtered.length };
     }
@@ -2447,21 +2459,24 @@ function renderUploadPreview(ym) {
         const rows = uploadState.gribVerloren.type === 'xlsx' ? uploadState.gribVerloren.rows : csvToRows(uploadState.gribVerloren.text);
         // Filter on endDate matching selected month (YYYY-MM)
         const filtered = rows.filter(row => {
-            const d = (row['endDate'] || row['enddate'] || row['EndDate'] || '').toString();
-            return d.startsWith(ym);
+            const d = row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? '';
+            return toYM(d) === ym;
         });
         gribVerloren = { lost: filtered.length, lost_members: filtered.length };
     }
 
-    const trialsAdults = parseInt(document.getElementById('inputTrialsAdults')?.value) || null;
-    const trialsU18 = parseInt(document.getElementById('inputTrialsU18')?.value) || null;
-    const zettle = parseFloat(document.getElementById('inputZettle')?.value) || null;
-    const sessions = parseInt(document.getElementById('inputSessions')?.value) || null;
-    const participants = parseInt(document.getElementById('inputParticipants')?.value) || null;
+    function readInt(id) { const v = document.getElementById(id)?.value; return v !== '' && v != null ? parseInt(v, 10) : null; }
+    function readFloat(id) { const v = document.getElementById(id)?.value; return v !== '' && v != null ? parseFloat(v) : null; }
+
+    const trialsAdults = readInt('inputTrialsAdults');
+    const trialsU18 = readInt('inputTrialsU18');
+    const zettle = readFloat('inputZettle');
+    const sessions = readInt('inputSessions');
+    const participants = readInt('inputParticipants');
 
     // Build the entry
     const totalMembers = gribLeden?.total_members || null;
-    const trials = trialsAdults || null;
+    const trials = trialsAdults;
     const lost = gribVerloren?.lost || null;
     const newMembers = gribNieuw?.new_members || null;
     const newMembersExcel = gribNieuw?.new_members_excel || null;
