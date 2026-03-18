@@ -2457,10 +2457,10 @@ function renderUploadPreview(ym) {
             const d = row['startDate'] ?? row['startdate'] ?? row['StartDate'] ?? '';
             return toYM(d) === ym && isRealMembership(row);
         });
-        // DEBUG: log subscription types being counted
-        const debugTypes = {};
-        filtered.forEach(r => { const s = r['subscription'] || '?'; debugTypes[s] = (debugTypes[s] || 0) + 1; });
-        console.log('Grib Nieuw — gefilterd op', ym, '— types:', debugTypes, '— totaal:', filtered.length);
+        // DEBUG: store subscription types being counted
+        const debugNieuw = {};
+        filtered.forEach(r => { const s = r['subscription'] || '?'; debugNieuw[s] = (debugNieuw[s] || 0) + 1; });
+        window._debugGribNieuw = { month: ym, total: filtered.length, types: debugNieuw };
         gribNieuw = { new_members: filtered.length, new_members_excel: filtered.length };
     }
 
@@ -2472,10 +2472,10 @@ function renderUploadPreview(ym) {
             const d = row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? '';
             return toYM(d) === ym && isRealMembership(row);
         });
-        // DEBUG: log subscription types being counted
-        const debugTypes = {};
-        filtered.forEach(r => { const s = r['subscription'] || '?'; debugTypes[s] = (debugTypes[s] || 0) + 1; });
-        console.log('Grib Verloren — gefilterd op', ym, '— types:', debugTypes, '— totaal:', filtered.length);
+        // DEBUG: store subscription types being counted
+        const debugVerl = {};
+        filtered.forEach(r => { const s = r['subscription'] || '?'; debugVerl[s] = (debugVerl[s] || 0) + 1; });
+        window._debugGribVerloren = { month: ym, total: filtered.length, types: debugVerl };
         gribVerloren = { lost: filtered.length, lost_members: filtered.length };
     }
 
@@ -2560,7 +2560,10 @@ function renderUploadPreview(ym) {
     // Format as JSON
     const json = JSON.stringify({ [ym]: entry }, null, 2);
     // Make it look like a data.js snippet
-    output.textContent = '  ' + json.slice(2, -2).trim();
+    let debugInfo = '';
+    if (window._debugGribNieuw) debugInfo += '\n\n--- DEBUG Grib Nieuw types ---\n' + JSON.stringify(window._debugGribNieuw, null, 2);
+    if (window._debugGribVerloren) debugInfo += '\n\n--- DEBUG Grib Verloren types ---\n' + JSON.stringify(window._debugGribVerloren, null, 2);
+    output.textContent = '  ' + json.slice(2, -2).trim() + debugInfo;
 }
 
 // Mailchimp parser — counts trials by OPTIN_TIME matching selected month
