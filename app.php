@@ -719,26 +719,20 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                     </label>
                 </div>
 
-                <!-- Grib Proeflessen -->
-                <div class="card upload-card" id="uploadGribProeflessen">
-                    <div class="card-header">
-                        <div><h3>Grib Proeflessen <span class="info-tooltip" title="Grib → Club Intelligence → Proefleden">ⓘ</span></h3><span class="card-subtitle">Aantal proeflessen</span></div>
-                        <span class="upload-status" id="statusGribProeflessen"></span>
-                    </div>
-                    <label class="upload-dropzone" id="dropGribProeflessen">
-                        <input type="file" accept=".csv,.xlsx,.xls" hidden>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <span class="upload-label">Klik of sleep CSV of XLSX hier</span>
-                        <span class="upload-filename"></span>
-                    </label>
-                </div>
-
                 <!-- Handmatige invoer -->
                 <div class="card upload-card" id="uploadManual">
                     <div class="card-header">
-                        <div><h3>Handmatige Invoer</h3><span class="card-subtitle">Zettle, lessen & deelnemers</span></div>
+                        <div><h3>Handmatige Invoer</h3><span class="card-subtitle">Trials, Zettle, lessen & deelnemers</span></div>
                     </div>
                     <div class="manual-inputs">
+                        <div class="sim-input-group">
+                            <label for="inputTrialsAdults">Trials Adults <span class="info-tooltip" title="Grib → Club Intelligence → Proefleden">ⓘ</span></label>
+                            <input type="number" class="sim-input" id="inputTrialsAdults" placeholder="bijv. 35">
+                        </div>
+                        <div class="sim-input-group">
+                            <label for="inputTrialsU18">Trials U18 <span class="info-tooltip" title="Grib → Club Intelligence → Proefleden (onder 18)">ⓘ</span></label>
+                            <input type="number" class="sim-input" id="inputTrialsU18" placeholder="bijv. 10">
+                        </div>
                         <div class="sim-input-group">
                             <label for="inputZettle">Zettle omzet (€) <span class="info-tooltip" title="Zettle → Omzet → Rapport">ⓘ</span></label>
                             <input type="number" class="sim-input" id="inputZettle" placeholder="bijv. 2450.50" step="0.01">

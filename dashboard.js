@@ -2325,7 +2325,6 @@ const UPLOAD_CONFIGS = [
     { id: 'GribLeden', dropId: 'dropGribLeden', statusId: 'statusGribLeden', key: 'gribLeden' },
     { id: 'GribNieuw', dropId: 'dropGribNieuw', statusId: 'statusGribNieuw', key: 'gribNieuw' },
     { id: 'GribVerloren', dropId: 'dropGribVerloren', statusId: 'statusGribVerloren', key: 'gribVerloren' },
-    { id: 'GribProeflessen', dropId: 'dropGribProeflessen', statusId: 'statusGribProeflessen', key: 'gribProeflessen' },
 ];
 
 UPLOAD_CONFIGS.forEach(cfg => {
@@ -2448,21 +2447,15 @@ function renderUploadPreview(ym) {
         gribVerloren = { lost: filtered.length, lost_members: filtered.length };
     }
 
-    let gribProeflessen = null;
-    if (uploadState.gribProeflessen) {
-        const rows = uploadState.gribProeflessen.type === 'xlsx' ? uploadState.gribProeflessen.rows : csvToRows(uploadState.gribProeflessen.text);
-        // Proeflessen file is already exported per month, count all rows
-        gribProeflessen = { trials: rows.length };
-    }
-
+    const trialsAdults = parseInt(document.getElementById('inputTrialsAdults')?.value) || null;
+    const trialsU18 = parseInt(document.getElementById('inputTrialsU18')?.value) || null;
     const zettle = parseFloat(document.getElementById('inputZettle')?.value) || null;
     const sessions = parseInt(document.getElementById('inputSessions')?.value) || null;
     const participants = parseInt(document.getElementById('inputParticipants')?.value) || null;
 
     // Build the entry
     const totalMembers = gribLeden?.total_members || null;
-    const trials = gribProeflessen?.trials || null;
-    const trialsU18 = null;
+    const trials = (trialsAdults || trialsU18) ? (trialsAdults || 0) + (trialsU18 || 0) : null;
     const lost = gribVerloren?.lost || null;
     const newMembers = gribNieuw?.new_members || null;
     const newMembersExcel = gribNieuw?.new_members_excel || null;
