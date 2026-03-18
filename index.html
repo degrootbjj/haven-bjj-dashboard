@@ -610,7 +610,7 @@
                 <!-- Mailchimp -->
                 <div class="card upload-card" id="uploadMailchimp">
                     <div class="card-header">
-                        <div><h3>Mailchimp CSV</h3><span class="card-subtitle">Trials & subscribers</span></div>
+                        <div><h3>Mailchimp CSV</h3><span class="card-subtitle">E-mail subscribers</span></div>
                         <span class="upload-status" id="statusMailchimp"></span>
                     </div>
                     <label class="upload-dropzone" id="dropMailchimp">
@@ -670,6 +670,20 @@
                         <span class="upload-status" id="statusGribVerloren"></span>
                     </div>
                     <label class="upload-dropzone" id="dropGribVerloren">
+                        <input type="file" accept=".csv,.xlsx,.xls" hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="upload-label">Klik of sleep CSV of XLSX hier</span>
+                        <span class="upload-filename"></span>
+                    </label>
+                </div>
+
+                <!-- Grib Proeflessen -->
+                <div class="card upload-card" id="uploadGribProeflessen">
+                    <div class="card-header">
+                        <div><h3>Grib Proeflessen</h3><span class="card-subtitle">Aantal proeflessen</span></div>
+                        <span class="upload-status" id="statusGribProeflessen"></span>
+                    </div>
+                    <label class="upload-dropzone" id="dropGribProeflessen">
                         <input type="file" accept=".csv,.xlsx,.xls" hidden>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         <span class="upload-label">Klik of sleep CSV of XLSX hier</span>

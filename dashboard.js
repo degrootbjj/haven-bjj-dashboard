@@ -2297,6 +2297,7 @@ const UPLOAD_CONFIGS = [
     { id: 'GribLeden', dropId: 'dropGribLeden', statusId: 'statusGribLeden', key: 'gribLeden' },
     { id: 'GribNieuw', dropId: 'dropGribNieuw', statusId: 'statusGribNieuw', key: 'gribNieuw' },
     { id: 'GribVerloren', dropId: 'dropGribVerloren', statusId: 'statusGribVerloren', key: 'gribVerloren' },
+    { id: 'GribProeflessen', dropId: 'dropGribProeflessen', statusId: 'statusGribProeflessen', key: 'gribProeflessen' },
 ];
 
 UPLOAD_CONFIGS.forEach(cfg => {
@@ -2404,14 +2405,20 @@ function renderUploadPreview(ym) {
         gribVerloren = { lost: rows.length, lost_members: rows.length };
     }
 
+    let gribProeflessen = null;
+    if (uploadState.gribProeflessen) {
+        const rows = uploadState.gribProeflessen.type === 'xlsx' ? uploadState.gribProeflessen.rows : csvToRows(uploadState.gribProeflessen.text);
+        gribProeflessen = { trials: rows.length };
+    }
+
     const zettle = parseFloat(document.getElementById('inputZettle')?.value) || null;
     const sessions = parseInt(document.getElementById('inputSessions')?.value) || null;
     const participants = parseInt(document.getElementById('inputParticipants')?.value) || null;
 
     // Build the entry
     const totalMembers = gribLeden?.total_members || null;
-    const trials = mailchimp?.trials || null;
-    const trialsU18 = mailchimp?.trials_u18 || null;
+    const trials = gribProeflessen?.trials || null;
+    const trialsU18 = null;
     const lost = gribVerloren?.lost || null;
     const newMembers = gribNieuw?.new_members || null;
     const newMembersExcel = gribNieuw?.new_members_excel || null;
@@ -2498,62 +2505,63 @@ function parseMailchimpCSV(text, ym) {
 }
 
 // Jortt W&V parser — handles hierarchical P&L format
-// Format: each row has label + amount in different columns based on indent level
+// CSV structure: label in col 0, amount depth shown by empty columns
+// Level 0: "Label,amount" (top-level sections)
+// Level 1: "Label,,amount" (sub-categories)
+// Level 2: "Label,,,amount" (detail items)
 function parseJorttCSV(text) {
     const lines = text.trim().split(/\r?\n/);
     const delim = lines[0].includes(';') ? ';' : ',';
 
-    let revenue = 0, costs = 0, depreciation = 0, payroll = 0;
+    let revenue = 0, costs = 0, depreciation = 0, financialCosts = 0, payroll = 0;
     const costCats = {};
     const revCats = {};
-    let section = null; // 'revenue', 'costs', 'depreciation'
+    let section = null;
 
     for (const line of lines) {
         const cells = line.split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
 
-        // Find the label (first non-empty non-numeric cell)
-        let label = '', labelIdx = -1;
-        for (let i = 0; i < cells.length; i++) {
-            if (cells[i] && !/^-?[\d.,]+$/.test(cells[i])) {
-                label = cells[i];
-                labelIdx = i;
-                break;
-            }
-        }
-
-        // Find the amount (first numeric value, not at label position)
-        let amount = 0;
-        for (let i = 0; i < cells.length; i++) {
-            if (cells[i] && i !== labelIdx) {
-                const num = parseDutchNum(cells[i]);
-                if (num !== 0) { amount = num; break; }
-            }
-        }
-
+        // Find label (first non-empty cell, always in col 0 for this format)
+        const label = cells[0]?.trim() || '';
         if (!label) continue;
-        const ll = label.toLowerCase().trim();
 
-        // Detect top-level sections
-        if (ll === 'opbrengsten') { section = 'revenue'; revenue = amount; continue; }
-        if (ll === 'kosten') { section = 'costs'; costs = amount; continue; }
-        if (ll.startsWith('afschrijvingen') && labelIdx <= 0) { section = 'depreciation'; depreciation = amount; continue; }
-
-        // Track sub-categories (level 1 items within sections)
-        if (section === 'revenue' && amount > 0 && labelIdx <= 1) {
-            revCats[label] = amount;
-        }
-        if (section === 'costs' && amount > 0 && labelIdx <= 1) {
-            costCats[label] = amount;
-            if (ll.includes('personeel') || ll.includes('loon') || ll.includes('salaris')) {
-                payroll += amount;
+        // Find amount and its column depth
+        let amount = 0, amountCol = -1;
+        for (let i = 1; i < cells.length; i++) {
+            if (cells[i] && cells[i] !== '') {
+                const num = parseDutchNum(cells[i]);
+                if (num !== 0) { amount = num; amountCol = i; break; }
             }
         }
-        if (section === 'depreciation' && amount > 0 && labelIdx <= 1) {
-            costCats[label] = amount;
+
+        const ll = label.toLowerCase();
+
+        // Top-level sections: amount in column 1 (directly after label)
+        if (amountCol === 1) {
+            if (ll === 'opbrengsten') { section = 'revenue'; revenue = amount; continue; }
+            if (ll === 'kosten') { section = 'costs'; costs = amount; continue; }
+            if (ll === 'afschrijvingen') { section = 'depreciation'; depreciation = amount; continue; }
+            if (ll.startsWith('financi')) { section = 'financial'; financialCosts = amount; continue; }
+        }
+
+        // Sub-categories: amount in column 2 (one level deep)
+        if (amountCol === 2 && amount > 0) {
+            if (section === 'revenue') revCats[label] = amount;
+            if (section === 'costs') {
+                costCats[label] = amount;
+                if (ll.includes('personeel') || ll.includes('loon') || ll.includes('salaris')) payroll += amount;
+            }
+            if (section === 'depreciation') costCats[label] = amount;
+            if (section === 'financial') costCats[label] = amount;
+        }
+
+        // Detail items: amount in column 3 (two levels deep)
+        if (amountCol === 3 && amount > 0) {
+            if (section === 'revenue') revCats[label] = amount;
         }
     }
 
-    const totalCosts = costs + depreciation;
+    const totalCosts = costs + depreciation + financialCosts;
 
     return {
         revenue: Math.round(revenue * 100) / 100,
