@@ -1090,8 +1090,8 @@ body {
     bottom: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
-    background: var(--text-primary);
-    color: white;
+    background: #1e293b;
+    color: #f1f5f9;
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 12px;
@@ -1101,6 +1101,7 @@ body {
     pointer-events: none;
     transition: opacity 0.15s;
     z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 .info-tooltip:hover::after { opacity: 1; }
 
