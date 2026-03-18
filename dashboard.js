@@ -2639,8 +2639,22 @@ document.getElementById('uploadSubmitBtn')?.addEventListener('click', async () =
 
     const { ym, entry } = window._lastUploadEntry;
 
+    // Strip null values — server merges, so we only send what we have
+    const cleanEntry = {};
+    for (const [k, v] of Object.entries(entry)) {
+        if (v !== null && v !== undefined) cleanEntry[k] = v;
+    }
+
+    // Check if there's any real data to send
+    const dataKeys = Object.keys(cleanEntry).filter(k => !['label', 'ym'].includes(k));
+    if (dataKeys.length === 0) {
+        spanEl.textContent = 'Geen data!';
+        setTimeout(() => spanEl.textContent = 'Verzend', 2000);
+        return;
+    }
+
     // Confirm before sending
-    if (!confirm(`Data voor ${entry.label} verzenden naar dashboard?`)) return;
+    if (!confirm(`Data voor ${entry.label} verzenden naar dashboard?\n\nVelden: ${dataKeys.join(', ')}`)) return;
 
     spanEl.textContent = 'Verzenden...';
     btn.disabled = true;
@@ -2649,7 +2663,7 @@ document.getElementById('uploadSubmitBtn')?.addEventListener('click', async () =
         const resp = await fetch('/api/update-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ym, entry })
+            body: JSON.stringify({ ym, entry: cleanEntry })
         });
 
         const result = await resp.json();
