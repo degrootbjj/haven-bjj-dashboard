@@ -2424,19 +2424,34 @@ function renderUploadPreview(ym) {
     let gribNieuw = null;
     if (uploadState.gribNieuw) {
         const rows = uploadState.gribNieuw.type === 'xlsx' ? uploadState.gribNieuw.rows : csvToRows(uploadState.gribNieuw.text);
-        gribNieuw = { new_members: rows.length, new_members_excel: rows.length };
+        // Filter on startDate matching selected month (YYYY-MM)
+        const filtered = rows.filter(row => {
+            const d = (row['startDate'] || row['startdate'] || row['StartDate'] || '').toString();
+            return d.startsWith(ym);
+        });
+        gribNieuw = { new_members: filtered.length, new_members_excel: filtered.length };
     }
 
     let gribVerloren = null;
     if (uploadState.gribVerloren) {
         const rows = uploadState.gribVerloren.type === 'xlsx' ? uploadState.gribVerloren.rows : csvToRows(uploadState.gribVerloren.text);
-        gribVerloren = { lost: rows.length, lost_members: rows.length };
+        // Filter on endDate matching selected month (YYYY-MM)
+        const filtered = rows.filter(row => {
+            const d = (row['endDate'] || row['enddate'] || row['EndDate'] || '').toString();
+            return d.startsWith(ym);
+        });
+        gribVerloren = { lost: filtered.length, lost_members: filtered.length };
     }
 
     let gribProeflessen = null;
     if (uploadState.gribProeflessen) {
         const rows = uploadState.gribProeflessen.type === 'xlsx' ? uploadState.gribProeflessen.rows : csvToRows(uploadState.gribProeflessen.text);
-        gribProeflessen = { trials: rows.length };
+        // Filter on startDate matching selected month (YYYY-MM)
+        const filtered = rows.filter(row => {
+            const d = (row['startDate'] || row['startdate'] || row['StartDate'] || '').toString();
+            return d.startsWith(ym);
+        });
+        gribProeflessen = { trials: filtered.length };
     }
 
     const zettle = parseFloat(document.getElementById('inputZettle')?.value) || null;
