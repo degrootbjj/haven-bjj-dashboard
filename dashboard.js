@@ -2395,7 +2395,7 @@ UPLOAD_CONFIGS.forEach(cfg => {
 });
 
 // Manual input listeners
-['inputZettle', 'inputSessions', 'inputParticipants'].forEach(id => {
+['inputTrialsAdults', 'inputTrialsU18', 'inputZettle', 'inputSessions', 'inputParticipants'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => renderUploadPreview(monthSelect.value));
 });
 
