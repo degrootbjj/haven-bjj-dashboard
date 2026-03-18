@@ -24,7 +24,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', simulator: 'Prijssimulator' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', uploads: 'Uploads', simulator: 'Prijssimulator' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -51,6 +51,7 @@ function updateCurrentPage() {
     else if (currentPage === 'financien') updateFinancien(ym);
     else if (currentPage === 'marketing') updateMarketing(ym);
     else if (currentPage === 'nieuwsbrief') updateNieuwsbrief();
+    else if (currentPage === 'uploads') updateUploads(ym);
     else if (currentPage === 'simulator') updateSimulator(ym);
 }
 
@@ -2249,6 +2250,297 @@ document.getElementById('nbCopyBtn')?.addEventListener('click', () => {
         new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })
     ]).then(() => {
         const btn = document.getElementById('nbCopyBtn');
+        btn.querySelector('span').textContent = 'Gekopieerd!';
+        setTimeout(() => btn.querySelector('span').textContent = 'Kopieer', 2000);
+    });
+});
+
+// ===================== UPLOADS =====================
+const uploadState = {};
+
+function updateUploads(ym) {
+    renderUploadPreview(ym);
+}
+
+// Generic CSV parser: text → array of objects (header row = keys)
+function csvToRows(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return [];
+    // Handle both comma and semicolon delimiters
+    const delim = lines[0].includes(';') ? ';' : ',';
+    const headers = lines[0].split(delim).map(h => h.trim().replace(/^"|"$/g, ''));
+    return lines.slice(1).filter(l => l.trim()).map(line => {
+        const vals = line.split(delim).map(v => v.trim().replace(/^"|"$/g, ''));
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = vals[i] || '');
+        return obj;
+    });
+}
+
+// Parse a number from Dutch format: "1.234,56" or "1234.56"
+function parseDutchNum(s) {
+    if (!s) return 0;
+    s = s.toString().trim().replace(/[€\s]/g, '');
+    // If contains both . and , → Dutch format (1.234,56)
+    if (s.includes('.') && s.includes(',')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+    } else if (s.includes(',') && !s.includes('.')) {
+        s = s.replace(',', '.');
+    }
+    return parseFloat(s) || 0;
+}
+
+// Setup file upload handlers
+const UPLOAD_CONFIGS = [
+    { id: 'Mailchimp', dropId: 'dropMailchimp', statusId: 'statusMailchimp', key: 'mailchimp' },
+    { id: 'Jortt', dropId: 'dropJortt', statusId: 'statusJortt', key: 'jortt' },
+    { id: 'GribLeden', dropId: 'dropGribLeden', statusId: 'statusGribLeden', key: 'gribLeden' },
+    { id: 'GribNieuw', dropId: 'dropGribNieuw', statusId: 'statusGribNieuw', key: 'gribNieuw' },
+    { id: 'GribVerloren', dropId: 'dropGribVerloren', statusId: 'statusGribVerloren', key: 'gribVerloren' },
+];
+
+UPLOAD_CONFIGS.forEach(cfg => {
+    const dropzone = document.getElementById(cfg.dropId);
+    if (!dropzone) return;
+    const fileInput = dropzone.querySelector('input[type="file"]');
+    const filenameEl = dropzone.querySelector('.upload-filename');
+    const statusEl = document.getElementById(cfg.statusId);
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        filenameEl.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+        dropzone.classList.add('has-file');
+        dropzone.classList.remove('has-error');
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                uploadState[cfg.key] = { text: e.target.result, filename: file.name };
+                statusEl.textContent = '✓';
+                statusEl.style.color = 'var(--green)';
+                renderUploadPreview(monthSelect.value);
+            } catch (err) {
+                statusEl.textContent = '✗';
+                statusEl.style.color = 'var(--red)';
+                dropzone.classList.add('has-error');
+                dropzone.classList.remove('has-file');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
+    dropzone.addEventListener('dragleave', () => { if (!dropzone.classList.contains('has-file')) dropzone.style.borderColor = ''; });
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = '';
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+});
+
+// Manual input listeners
+['inputZettle', 'inputSessions', 'inputParticipants'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => renderUploadPreview(monthSelect.value));
+});
+
+// Build the data.js entry from all available data
+function renderUploadPreview(ym) {
+    const output = document.getElementById('uploadOutput');
+    if (!output) return;
+
+    const [y, m] = ym.split('-');
+    const label = MONTH_NAMES[m] + ' ' + y;
+    const prevData = DASHBOARD_DATA[prevYm(ym)];
+
+    // Gather raw parsed data
+    let mailchimp = null;
+    if (uploadState.mailchimp) {
+        const rows = csvToRows(uploadState.mailchimp.text);
+        // Mailchimp: count rows as trials, or look for specific fields
+        mailchimp = { trials: rows.length, trials_u18: null };
+    }
+
+    let jortt = null;
+    if (uploadState.jortt) {
+        jortt = parseJorttCSV(uploadState.jortt.text);
+    }
+
+    let gribLeden = null;
+    if (uploadState.gribLeden) {
+        gribLeden = parseGribLedenCSV(uploadState.gribLeden.text);
+    }
+
+    let gribNieuw = null;
+    if (uploadState.gribNieuw) {
+        const rows = csvToRows(uploadState.gribNieuw.text);
+        gribNieuw = { new_members: rows.length, new_members_excel: rows.length };
+    }
+
+    let gribVerloren = null;
+    if (uploadState.gribVerloren) {
+        const rows = csvToRows(uploadState.gribVerloren.text);
+        gribVerloren = { lost: rows.length, lost_members: rows.length };
+    }
+
+    const zettle = parseFloat(document.getElementById('inputZettle')?.value) || null;
+    const sessions = parseInt(document.getElementById('inputSessions')?.value) || null;
+    const participants = parseInt(document.getElementById('inputParticipants')?.value) || null;
+
+    // Build the entry
+    const totalMembers = gribLeden?.total_members || null;
+    const trials = mailchimp?.trials || null;
+    const trialsU18 = mailchimp?.trials_u18 || null;
+    const lost = gribVerloren?.lost || null;
+    const newMembers = gribNieuw?.new_members || null;
+    const newMembersExcel = gribNieuw?.new_members_excel || null;
+    const totalIncome = jortt?.revenue || null;
+
+    // Calculated fields
+    const trialToMember = (trials && newMembers) ? newMembers / trials : null;
+    const incomePerMember = (totalIncome && totalMembers) ? totalIncome / totalMembers : null;
+    const prevMembers = prevData?.total_members;
+    const attrition = (lost && prevMembers) ? lost / prevMembers : null;
+    const participantsPerSession = (participants && sessions) ? participants / sessions : null;
+    const sessionsPerMember = (sessions && totalMembers) ? sessions / totalMembers : null;
+    const sessionIncomePerMember = (incomePerMember && sessionsPerMember) ? incomePerMember / sessionsPerMember : null;
+    const incomePerSession = (totalIncome && sessions) ? totalIncome / sessions : null;
+
+    let grossProfitPerSession = null;
+    if (jortt && sessions) {
+        grossProfitPerSession = (jortt.revenue - jortt.costs) / jortt.revenue;
+    }
+
+    const entry = {
+        label,
+        ym,
+        total_members: totalMembers,
+        trials,
+        trials_u18: trialsU18,
+        lost,
+        new_members_excel: newMembersExcel,
+        trial_to_member: trialToMember,
+        total_income: totalIncome,
+        income_per_member: incomePerMember,
+        attrition,
+        zettle,
+        sessions,
+        participants,
+        participants_per_session: participantsPerSession,
+        sessions_per_member: sessionsPerMember,
+        session_income_per_member: sessionIncomePerMember,
+        income_per_session: incomePerSession,
+        gross_profit_per_session: grossProfitPerSession,
+    };
+
+    if (gribLeden?.categories) {
+        entry.categories = gribLeden.categories;
+        entry.total_real = gribLeden.total_real;
+        entry.total_6cat = gribLeden.total_6cat;
+        entry.overig = gribLeden.overig;
+    }
+
+    if (gribNieuw) entry.new_members = gribNieuw.new_members;
+    if (gribVerloren) entry.lost_members = gribVerloren.lost_members;
+
+    if (jortt) {
+        entry.jortt = {
+            revenue: jortt.revenue,
+            costs: jortt.costs,
+            profit: jortt.profit,
+            payroll: jortt.payroll,
+            cost_categories: jortt.cost_categories,
+            revenue_categories: jortt.revenue_categories
+        };
+    }
+
+    // Format as JSON
+    const json = JSON.stringify({ [ym]: entry }, null, 2);
+    // Make it look like a data.js snippet
+    output.textContent = '  ' + json.slice(2, -2).trim();
+}
+
+// Placeholder Jortt parser — extracts W&V data
+function parseJorttCSV(text) {
+    const rows = csvToRows(text);
+    let revenue = 0, costs = 0, payroll = 0;
+    const costCats = {};
+    const revCats = {};
+
+    // Try to identify structure from headers
+    // Common Jortt W&V export: columns like "Categorie", "Bedrag" or line items
+    rows.forEach(row => {
+        const cat = row['Categorie'] || row['Category'] || row['Omschrijving'] || '';
+        const amount = parseDutchNum(row['Bedrag'] || row['Amount'] || row['Totaal'] || '0');
+
+        if (cat && amount) {
+            // Simple heuristic: positive = revenue, negative = cost
+            if (amount > 0) {
+                revCats[cat] = (revCats[cat] || 0) + amount;
+                revenue += amount;
+            } else {
+                costCats[cat] = (costCats[cat] || 0) + Math.abs(amount);
+                costs += Math.abs(amount);
+            }
+        }
+    });
+
+    // Look for payroll specifically
+    Object.keys(costCats).forEach(k => {
+        if (k.toLowerCase().includes('personeel') || k.toLowerCase().includes('loon') || k.toLowerCase().includes('salaris')) {
+            payroll += costCats[k];
+        }
+    });
+
+    return {
+        revenue: Math.round(revenue * 100) / 100,
+        costs: Math.round(costs * 100) / 100,
+        profit: Math.round((revenue - costs) * 100) / 100,
+        payroll: Math.round(payroll * 100) / 100,
+        cost_categories: costCats,
+        revenue_categories: revCats
+    };
+}
+
+// Placeholder Grib leden parser
+function parseGribLedenCSV(text) {
+    const rows = csvToRows(text);
+    const catMap = { 'Yearly': 0, 'Monthly': 0, 'Yearly Student': 0, 'Monthly Student': 0, 'Yearly U18': 0, 'Monthly U18': 0 };
+
+    // Try to categorize members by subscription type
+    rows.forEach(row => {
+        const sub = row['Abonnement'] || row['Subscription'] || row['Type'] || '';
+        const subLower = sub.toLowerCase();
+        if (subLower.includes('jaar') && subLower.includes('student')) catMap['Yearly Student']++;
+        else if (subLower.includes('jaar') && subLower.includes('u18')) catMap['Yearly U18']++;
+        else if (subLower.includes('jaar')) catMap['Yearly']++;
+        else if (subLower.includes('maand') && subLower.includes('student')) catMap['Monthly Student']++;
+        else if (subLower.includes('maand') && subLower.includes('u18')) catMap['Monthly U18']++;
+        else if (subLower.includes('maand')) catMap['Monthly']++;
+    });
+
+    const total6cat = Object.values(catMap).reduce((a, b) => a + b, 0);
+    const overig = rows.length - total6cat;
+
+    return {
+        total_members: rows.length,
+        categories: { ...catMap, 'Overig': overig },
+        total_real: rows.length,
+        total_6cat: total6cat,
+        overig
+    };
+}
+
+// Copy button for upload output
+document.getElementById('uploadCopyBtn')?.addEventListener('click', () => {
+    const output = document.getElementById('uploadOutput');
+    const text = output.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('uploadCopyBtn');
         btn.querySelector('span').textContent = 'Gekopieerd!';
         setTimeout(() => btn.querySelector('span').textContent = 'Kopieer', 2000);
     });

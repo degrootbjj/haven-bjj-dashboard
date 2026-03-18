@@ -44,6 +44,10 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 Crew Briefing
             </a></li>
+            <li><a href="#" class="nav-link" data-page="uploads">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Uploads
+            </a></li>
             <li><a href="#" class="nav-link" data-page="simulator">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
                 Simulator
@@ -599,6 +603,116 @@
         </div><!-- /pageNieuwsbrief -->
 
         <!-- === PAGE: Simulator === -->
+        <!-- === PAGE: Uploads === -->
+        <div class="page" id="pageUploads">
+
+            <div class="upload-grid">
+                <!-- Mailchimp -->
+                <div class="card upload-card" id="uploadMailchimp">
+                    <div class="card-header">
+                        <div><h3>Mailchimp CSV</h3><span class="card-subtitle">Trials & subscribers</span></div>
+                        <span class="upload-status" id="statusMailchimp"></span>
+                    </div>
+                    <label class="upload-dropzone" id="dropMailchimp">
+                        <input type="file" accept=".csv" hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-filename"></span>
+                    </label>
+                </div>
+
+                <!-- Jortt -->
+                <div class="card upload-card" id="uploadJortt">
+                    <div class="card-header">
+                        <div><h3>Jortt Winst & Verlies</h3><span class="card-subtitle">Omzet, kosten, winst</span></div>
+                        <span class="upload-status" id="statusJortt"></span>
+                    </div>
+                    <label class="upload-dropzone" id="dropJortt">
+                        <input type="file" accept=".csv" hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-filename"></span>
+                    </label>
+                </div>
+
+                <!-- Grib Leden -->
+                <div class="card upload-card" id="uploadGribLeden">
+                    <div class="card-header">
+                        <div><h3>Grib Leden</h3><span class="card-subtitle">Totaal leden & abonnementen</span></div>
+                        <span class="upload-status" id="statusGribLeden"></span>
+                    </div>
+                    <label class="upload-dropzone" id="dropGribLeden">
+                        <input type="file" accept=".csv" hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-filename"></span>
+                    </label>
+                </div>
+
+                <!-- Grib Nieuwe Leden -->
+                <div class="card upload-card" id="uploadGribNieuw">
+                    <div class="card-header">
+                        <div><h3>Grib Nieuwe Leden</h3><span class="card-subtitle">Nieuwe aanmeldingen</span></div>
+                        <span class="upload-status" id="statusGribNieuw"></span>
+                    </div>
+                    <label class="upload-dropzone" id="dropGribNieuw">
+                        <input type="file" accept=".csv" hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-filename"></span>
+                    </label>
+                </div>
+
+                <!-- Grib Verloren Leden -->
+                <div class="card upload-card" id="uploadGribVerloren">
+                    <div class="card-header">
+                        <div><h3>Grib Verloren Leden</h3><span class="card-subtitle">Opzeggingen</span></div>
+                        <span class="upload-status" id="statusGribVerloren"></span>
+                    </div>
+                    <label class="upload-dropzone" id="dropGribVerloren">
+                        <input type="file" accept=".csv" hidden>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="upload-label">Klik of sleep CSV hier</span>
+                        <span class="upload-filename"></span>
+                    </label>
+                </div>
+
+                <!-- Handmatige invoer -->
+                <div class="card upload-card" id="uploadManual">
+                    <div class="card-header">
+                        <div><h3>Handmatige Invoer</h3><span class="card-subtitle">Zettle & lessen</span></div>
+                    </div>
+                    <div class="manual-inputs">
+                        <div class="sim-input-group">
+                            <label for="inputZettle">Zettle omzet (€)</label>
+                            <input type="number" class="sim-input" id="inputZettle" placeholder="bijv. 2450.50" step="0.01">
+                        </div>
+                        <div class="sim-input-group">
+                            <label for="inputSessions">Aantal lessen</label>
+                            <input type="number" class="sim-input" id="inputSessions" placeholder="bijv. 85">
+                        </div>
+                        <div class="sim-input-group">
+                            <label for="inputParticipants">Totaal deelnemers</label>
+                            <input type="number" class="sim-input" id="inputParticipants" placeholder="bijv. 1200">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output -->
+            <div class="card upload-output-card">
+                <div class="card-header">
+                    <div><h3>Data Preview</h3><span class="card-subtitle">Kopieer dit blok naar data.js</span></div>
+                    <button class="btn-pdf" id="uploadCopyBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>Kopieer</span>
+                    </button>
+                </div>
+                <pre class="upload-output" id="uploadOutput">Upload bestanden en vul velden in om een preview te genereren...</pre>
+            </div>
+
+        </div><!-- /pageUploads -->
+
         <div class="page" id="pageSimulator">
 
         <!-- Simulator Inputs -->
