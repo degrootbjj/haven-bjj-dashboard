@@ -1011,6 +1011,41 @@ body {
 .upload-card .card-subtitle { font-size: 12px; color: var(--text-secondary); }
 .upload-card .card-header { margin-bottom: 12px; }
 
+.info-tooltip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    font-style: normal;
+    color: var(--text-secondary);
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 2px;
+}
+.info-tooltip:hover { color: var(--accent); }
+.info-tooltip::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-primary);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 100;
+}
+.info-tooltip:hover::after { opacity: 1; }
+
 .upload-dropzone {
     display: flex;
     flex-direction: column;
