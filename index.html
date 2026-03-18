@@ -716,11 +716,17 @@
             <!-- Output -->
             <div class="card upload-output-card">
                 <div class="card-header">
-                    <div><h3>Data Preview</h3><span class="card-subtitle">Kopieer dit blok naar data.js</span></div>
-                    <button class="btn-pdf" id="uploadCopyBtn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                        <span>Kopieer</span>
-                    </button>
+                    <div><h3>Data Preview</h3><span class="card-subtitle">Controleer de data en verzend naar dashboard</span></div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn-pdf" id="uploadCopyBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span>Kopieer</span>
+                        </button>
+                        <button class="btn-pdf" id="uploadSubmitBtn" style="background:var(--accent);color:white;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                            <span>Verzend</span>
+                        </button>
+                    </div>
                 </div>
                 <pre class="upload-output" id="uploadOutput">Upload bestanden en vul velden in om een preview te genereren...</pre>
             </div>

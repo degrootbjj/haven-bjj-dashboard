@@ -2482,6 +2482,9 @@ function renderUploadPreview(ym) {
         };
     }
 
+    // Store for submit button
+    window._lastUploadEntry = { ym, entry };
+
     // Format as JSON
     const json = JSON.stringify({ [ym]: entry }, null, 2);
     // Make it look like a data.js snippet
@@ -2621,4 +2624,56 @@ document.getElementById('uploadCopyBtn')?.addEventListener('click', () => {
         btn.querySelector('span').textContent = 'Gekopieerd!';
         setTimeout(() => btn.querySelector('span').textContent = 'Kopieer', 2000);
     });
+});
+
+// Verzend button — POST data to server and update data.js
+document.getElementById('uploadSubmitBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('uploadSubmitBtn');
+    const spanEl = btn.querySelector('span');
+
+    if (!window._lastUploadEntry || !window._lastUploadEntry.ym) {
+        spanEl.textContent = 'Geen data!';
+        setTimeout(() => spanEl.textContent = 'Verzend', 2000);
+        return;
+    }
+
+    const { ym, entry } = window._lastUploadEntry;
+
+    // Confirm before sending
+    if (!confirm(`Data voor ${entry.label} verzenden naar dashboard?`)) return;
+
+    spanEl.textContent = 'Verzenden...';
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch('/api/update-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ym, entry })
+        });
+
+        const result = await resp.json();
+
+        if (resp.ok && result.ok) {
+            spanEl.textContent = 'Verzonden! ✓';
+            btn.style.background = 'var(--green)';
+
+            // Reload page after short delay to pick up new data.js
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(result.error || 'Server error');
+        }
+    } catch (err) {
+        console.error('Submit error:', err);
+        spanEl.textContent = 'Fout!';
+        btn.style.background = 'var(--red)';
+        alert('Verzenden mislukt: ' + err.message);
+        setTimeout(() => {
+            spanEl.textContent = 'Verzend';
+            btn.style.background = 'var(--accent)';
+            btn.disabled = false;
+        }, 2000);
+    }
 });
