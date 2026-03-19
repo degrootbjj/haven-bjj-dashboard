@@ -41,7 +41,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', uploads: 'Uploads', simulator: 'Prijssimulator', account: 'Account' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', uploads: 'Uploads', simulator: 'Prijssimulator', gyminfo: 'Gym Info', account: 'Account' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -70,6 +70,7 @@ function updateCurrentPage() {
     else if (currentPage === 'nieuwsbrief') updateNieuwsbrief();
     else if (currentPage === 'uploads') updateUploads(ym);
     else if (currentPage === 'simulator') updateSimulator(ym);
+    else if (currentPage === 'gyminfo') loadGymInfo();
     else if (currentPage === 'account') { /* static page, no data update needed */ }
 }
 
@@ -2768,6 +2769,63 @@ document.getElementById('uploadSubmitBtn')?.addEventListener('click', async () =
             btn.disabled = false;
         }, 2000);
     }
+});
+
+// ═══════════════════════════════════════════════════════
+// GYM INFO
+// ═══════════════════════════════════════════════════════
+
+const GYM_INFO = {
+    kvk: '70098840',
+    btw: 'NL002308595B21',
+    bank: 'NL72KNAB0404019129',
+    telefoon: '0681653564',
+    colorLight: '#A3D9FF',
+    colorDark: '#141F5C',
+    fontMain: 'Avenir Next Condensed Bold (always all caps)',
+    fontSecondary: 'Roboto'
+};
+
+function loadGymInfo() {
+    document.getElementById('infoKvk').textContent = GYM_INFO.kvk || '—';
+    document.getElementById('infoBtw').textContent = GYM_INFO.btw || '—';
+    document.getElementById('infoBank').textContent = GYM_INFO.bank || '—';
+    document.getElementById('infoTelefoon').textContent = GYM_INFO.telefoon || '—';
+    document.getElementById('infoColorLight').textContent = GYM_INFO.colorLight || '—';
+    document.getElementById('infoColorDark').textContent = GYM_INFO.colorDark || '—';
+    document.getElementById('infoFontMain').textContent = GYM_INFO.fontMain || '—';
+    document.getElementById('infoFontSecondary').textContent = GYM_INFO.fontSecondary || '—';
+
+    const swatchLight = document.getElementById('swatchLight');
+    const swatchDark = document.getElementById('swatchDark');
+    if (GYM_INFO.colorLight) swatchLight.style.backgroundColor = GYM_INFO.colorLight;
+    if (GYM_INFO.colorDark) swatchDark.style.backgroundColor = GYM_INFO.colorDark;
+}
+
+// Supplier accordion
+document.querySelectorAll('.supplier-header').forEach(header => {
+    header.addEventListener('click', () => {
+        const item = header.closest('.supplier-item');
+        const wasOpen = item.classList.contains('open');
+        // Close all
+        document.querySelectorAll('.supplier-item.open').forEach(el => el.classList.remove('open'));
+        // Toggle clicked
+        if (!wasOpen) item.classList.add('open');
+    });
+});
+
+// Copy buttons
+document.querySelectorAll('.gyminfo-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const targetId = btn.dataset.copy;
+        const text = document.getElementById(targetId)?.textContent;
+        if (text && text !== '—') {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.classList.add('copied');
+                setTimeout(() => btn.classList.remove('copied'), 1500);
+            });
+        }
+    });
 });
 
 // ═══════════════════════════════════════════════════════

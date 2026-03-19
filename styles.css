@@ -1250,6 +1250,177 @@ body {
 }
 
 /* ============================================
+   Gym Info Page
+   ============================================ */
+
+.gyminfo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 900px;
+}
+
+.gyminfo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.gyminfo-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.gyminfo-item:last-child {
+    border-bottom: none;
+}
+
+.gyminfo-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    width: 140px;
+    flex-shrink: 0;
+}
+
+.gyminfo-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    letter-spacing: 0.3px;
+}
+
+.gyminfo-color {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.gyminfo-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+}
+
+.gyminfo-copy {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    margin-left: 12px;
+    flex-shrink: 0;
+}
+
+.gyminfo-copy:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.gyminfo-copy.copied {
+    background: var(--green-bg);
+    color: var(--green);
+    border-color: var(--green);
+}
+
+.gyminfo-suppliers-card {
+    grid-column: 1 / -1;
+}
+
+.gyminfo-suppliers {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.supplier-item {
+    border-bottom: 1px solid var(--border);
+}
+
+.supplier-item:last-child {
+    border-bottom: none;
+}
+
+.supplier-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    cursor: pointer;
+    color: var(--text);
+    transition: color 0.2s;
+}
+
+.supplier-header:hover {
+    color: var(--accent);
+}
+
+.supplier-header span {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.supplier-chevron {
+    transition: transform 0.2s;
+    color: var(--text-muted);
+}
+
+.supplier-item.open .supplier-chevron {
+    transform: rotate(180deg);
+}
+
+.supplier-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 0 0 30px;
+}
+
+.supplier-item.open .supplier-details {
+    max-height: 200px;
+    padding: 0 0 16px 30px;
+}
+
+.supplier-contact {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+
+.supplier-company {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.supplier-info {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+    .gyminfo-grid {
+        grid-template-columns: 1fr;
+    }
+    .gyminfo-label {
+        width: 120px;
+    }
+    .gyminfo-suppliers-card {
+        grid-column: 1;
+    }
+}
+
+/* ============================================
    Account Page
    ============================================ */
 

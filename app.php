@@ -80,6 +80,10 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
                 Simulator
             </a></li>
+            <li><a href="#" class="nav-link" data-page="gyminfo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Gym Info
+            </a></li>
         </ul>
         <div class="sidebar-bottom">
             <a href="#" class="nav-link sidebar-account-link" data-page="account">
@@ -971,6 +975,144 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         </div>
 
         </div><!-- /pageSimulator -->
+
+        <!-- ═══ Gym Info ═══ -->
+        <div class="page" id="pageGyminfo">
+            <div class="gyminfo-grid">
+                <div class="card">
+                    <h3 class="card-title">Bedrijfsgegevens</h3>
+                    <div class="gyminfo-list">
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">KVK Nummer</span>
+                            <span class="gyminfo-value" id="infoKvk">—</span>
+                            <button class="gyminfo-copy" data-copy="infoKvk" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">BTW Nummer</span>
+                            <span class="gyminfo-value" id="infoBtw">—</span>
+                            <button class="gyminfo-copy" data-copy="infoBtw" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">Bankrekening</span>
+                            <span class="gyminfo-value" id="infoBank">—</span>
+                            <button class="gyminfo-copy" data-copy="infoBank" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">Telefoonnummer</span>
+                            <span class="gyminfo-value" id="infoTelefoon">—</span>
+                            <button class="gyminfo-copy" data-copy="infoTelefoon" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Huisstijl</h3>
+                    <div class="gyminfo-list">
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">Haven lichtblauw</span>
+                            <span class="gyminfo-value gyminfo-color">
+                                <span class="gyminfo-swatch" id="swatchLight"></span>
+                                <span id="infoColorLight">—</span>
+                            </span>
+                            <button class="gyminfo-copy" data-copy="infoColorLight" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2-2v1"/></svg>
+                            </button>
+                        </div>
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">Oceaan donkerblauw</span>
+                            <span class="gyminfo-value gyminfo-color">
+                                <span class="gyminfo-swatch" id="swatchDark"></span>
+                                <span id="infoColorDark">—</span>
+                            </span>
+                            <button class="gyminfo-copy" data-copy="infoColorDark" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">Main font</span>
+                            <span class="gyminfo-value" id="infoFontMain">—</span>
+                            <button class="gyminfo-copy" data-copy="infoFontMain" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                        <div class="gyminfo-item">
+                            <span class="gyminfo-label">Secondary font</span>
+                            <span class="gyminfo-value" id="infoFontSecondary">—</span>
+                            <button class="gyminfo-copy" data-copy="infoFontSecondary" title="Kopieer">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card gyminfo-suppliers-card">
+                    <h3 class="card-title">Leveranciers</h3>
+                    <div class="gyminfo-suppliers">
+                        <div class="supplier-item" data-supplier="verzekeringen">
+                            <div class="supplier-header">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <span>Verzekeringen Algemeen</span>
+                                <svg class="supplier-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            <div class="supplier-details">
+                                <div class="supplier-contact">Bobby</div>
+                                <div class="supplier-company">Schagen Assurantiën</div>
+                                <div class="supplier-info" id="supplierVerzekeringen"></div>
+                            </div>
+                        </div>
+                        <div class="supplier-item" data-supplier="aansprakelijkheid">
+                            <div class="supplier-header">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <span>Verzekering Bedrijfsaansprakelijkheid</span>
+                                <svg class="supplier-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            <div class="supplier-details">
+                                <div class="supplier-company">Everion</div>
+                                <div class="supplier-info" id="supplierAansprakelijkheid"></div>
+                            </div>
+                        </div>
+                        <div class="supplier-item" data-supplier="schoonmaak">
+                            <div class="supplier-header">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <span>Schoonmaak</span>
+                                <svg class="supplier-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            <div class="supplier-details">
+                                <div class="supplier-contact">Gio</div>
+                                <div class="supplier-company">Trust Clean with care</div>
+                                <div class="supplier-info" id="supplierSchoonmaak"></div>
+                            </div>
+                        </div>
+                        <div class="supplier-item" data-supplier="matten">
+                            <div class="supplier-header">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                                <span>Matten</span>
+                                <svg class="supplier-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            <div class="supplier-details">
+                                <div class="supplier-info" id="supplierMatten"></div>
+                            </div>
+                        </div>
+                        <div class="supplier-item" data-supplier="rashguards">
+                            <div class="supplier-header">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46L16 2 12 5 8 2 3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47c.1.6.51 1.1 1.05 1.36L12 15l8.09-4.48a2 2 0 0 0 1.05-1.36l.58-3.47a2 2 0 0 0-1.34-2.23z"/><path d="M12 15v7"/></svg>
+                                <span>Rashguards</span>
+                                <svg class="supplier-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            <div class="supplier-details">
+                                <div class="supplier-info" id="supplierRashguards"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /pageGyminfo -->
 
         <!-- ═══ Account & Settings ═══ -->
         <div class="page" id="pageAccount">
