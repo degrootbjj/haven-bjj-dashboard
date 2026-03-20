@@ -3958,7 +3958,10 @@ document.getElementById('roosterLoadNotionBtn')?.addEventListener('click', async
         ]);
 
         if (!coachTables && !balieTables) {
-            throw new Error('Geen roosterdata gevonden voor ' + ROOSTER_MONTHS_NL[month - 1] + ' ' + year);
+            loading.style.display = 'none';
+            // Show option to create empty or copy from previous month
+            roosterShowNoNotionOptions(month, year);
+            return;
         }
 
         roosterParseNotionData(coachTables, balieTables, month, year);
@@ -3971,11 +3974,163 @@ document.getElementById('roosterLoadNotionBtn')?.addEventListener('click', async
         roosterSaveDraft();
     } catch (err) {
         loading.style.display = 'none';
-        errorEl.style.display = '';
-        errorEl.textContent = 'Fout: ' + err.message;
+        // Network/other errors also show options
+        roosterShowNoNotionOptions(month, year, err.message);
         console.error('Rooster load error:', err);
     }
 });
+
+// --- Show options when Notion has no data for this month ---
+async function roosterShowNoNotionOptions(month, year, errMsg) {
+    const errorEl = document.getElementById('roosterError');
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevKey = prevYear + '-' + String(prevMonth).padStart(2, '0');
+    const prevName = ROOSTER_MONTHS_NL[prevMonth - 1] + ' ' + prevYear;
+    const monthName = ROOSTER_MONTHS_NL[month - 1] + ' ' + year;
+
+    // Check if previous month draft exists
+    const prevDraft = await roosterLoadDraft(prevKey);
+
+    let html = `<div style="text-align:center;padding:24px;">
+        <div style="font-size:48px;margin-bottom:12px;">📋</div>
+        <h3 style="margin:0 0 8px;">Geen Notion-data voor ${monthName}</h3>
+        <p style="color:var(--text-secondary);margin:0 0 20px;">${errMsg ? errMsg : 'Er is nog geen roosterpagina aangemaakt in Notion voor deze maand.'}</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">`;
+
+    if (prevDraft && prevDraft.coaches) {
+        html += `<button class="btn-primary" id="roosterCopyPrev" style="padding:10px 20px;">
+            📋 Kopieer van ${prevName}
+        </button>`;
+    }
+
+    html += `<button class="btn-secondary" id="roosterCreateEmpty" style="padding:10px 20px;">
+            ➕ Leeg rooster maken
+        </button>
+        </div></div>`;
+
+    errorEl.innerHTML = html;
+    errorEl.style.display = '';
+
+    document.getElementById('roosterCopyPrev')?.addEventListener('click', async () => {
+        roosterCopyFromPrevMonth(prevDraft, month, year);
+        errorEl.style.display = 'none';
+        roosterShowWorkspace();
+        roosterRenderAll();
+        roosterUpdateStatus('unsaved', 'Niet opgeslagen');
+        roosterToast('Rooster gekopieerd van ' + prevName, 'success');
+        roosterSaveDraft();
+    });
+
+    document.getElementById('roosterCreateEmpty')?.addEventListener('click', () => {
+        roosterCreateEmpty(month, year);
+        errorEl.style.display = 'none';
+        roosterShowWorkspace();
+        roosterRenderAll();
+        roosterUpdateStatus('unsaved', 'Niet opgeslagen');
+        roosterToast('Leeg rooster aangemaakt', 'success');
+        roosterSaveDraft();
+    });
+}
+
+// --- Copy from previous month (shift dates to new month) ---
+function roosterCopyFromPrevMonth(prevDraft, month, year) {
+    roosterState.month = month;
+    roosterState.year = year;
+    roosterState.allCoaches = prevDraft.allCoaches || [...ROOSTER_KNOWN_COACHES];
+    roosterState.allBalie = prevDraft.allBalie || [...ROOSTER_KNOWN_BALIE];
+    roosterState.coachSlots = prevDraft.coachSlots || [...ROOSTER_COACH_SLOTS];
+    roosterState.absences = {};
+    roosterState.absenceTexts = {};
+
+    // Get dates for new month grouped by week
+    const dates = roosterGetMonthDates(year, month);
+    const prevCoaches = prevDraft.coaches || {};
+    const prevBalie = prevDraft.balie || {};
+
+    // Build a template: for each day-of-week + slot, find the most common assignment from prev month
+    const coachTemplate = {}; // dayOfWeek -> slot -> name
+    const balieTemplate = {}; // dayOfWeek -> name
+    for (const [dateStr, slots] of Object.entries(prevCoaches)) {
+        const d = new Date(dateStr);
+        const dow = d.getDay();
+        if (!coachTemplate[dow]) coachTemplate[dow] = {};
+        for (const [slot, name] of Object.entries(slots)) {
+            if (!coachTemplate[dow][slot]) coachTemplate[dow][slot] = {};
+            coachTemplate[dow][slot][name] = (coachTemplate[dow][slot][name] || 0) + 1;
+        }
+    }
+    for (const [dateStr, name] of Object.entries(prevBalie)) {
+        const d = new Date(dateStr);
+        const dow = d.getDay();
+        if (!balieTemplate[dow]) balieTemplate[dow] = {};
+        balieTemplate[dow][name] = (balieTemplate[dow][name] || 0) + 1;
+    }
+
+    // Apply template to new month
+    roosterState.coaches = {};
+    roosterState.balie = {};
+    for (const week of dates) {
+        for (const d of week) {
+            const dateStr = roosterDateStr(d);
+            const dow = d.getDay();
+            // Coaches
+            if (ROOSTER_COACH_DAYS.includes(dow) && coachTemplate[dow]) {
+                roosterState.coaches[dateStr] = {};
+                for (const slot of roosterState.coachSlots) {
+                    if (coachTemplate[dow][slot]) {
+                        // Pick most frequent name
+                        const best = Object.entries(coachTemplate[dow][slot]).sort((a, b) => b[1] - a[1])[0];
+                        if (best) roosterState.coaches[dateStr][slot] = best[0];
+                    }
+                }
+            }
+            // Balie
+            if (ROOSTER_BALIE_DAYS.includes(dow) && balieTemplate[dow]) {
+                const best = Object.entries(balieTemplate[dow]).sort((a, b) => b[1] - a[1])[0];
+                if (best) roosterState.balie[dateStr] = best[0];
+            }
+        }
+    }
+
+    roosterState.slotHistory = {};
+    if (prevDraft.slotHistory) {
+        for (const [slot, names] of Object.entries(prevDraft.slotHistory)) {
+            roosterState.slotHistory[slot] = new Set(names);
+        }
+    }
+    roosterState.loaded = true;
+}
+
+// --- Create empty roster ---
+function roosterCreateEmpty(month, year) {
+    roosterState.month = month;
+    roosterState.year = year;
+    roosterState.coaches = {};
+    roosterState.balie = {};
+    roosterState.absences = {};
+    roosterState.absenceTexts = {};
+    roosterState.allCoaches = [...ROOSTER_KNOWN_COACHES];
+    roosterState.allBalie = [...ROOSTER_KNOWN_BALIE];
+    roosterState.coachSlots = [...ROOSTER_COACH_SLOTS];
+    roosterState.slotHistory = {};
+
+    // Create empty cells for all dates
+    const dates = roosterGetMonthDates(year, month);
+    for (const week of dates) {
+        for (const d of week) {
+            const dateStr = roosterDateStr(d);
+            const dow = d.getDay();
+            if (ROOSTER_COACH_DAYS.includes(dow)) {
+                roosterState.coaches[dateStr] = {};
+            }
+            if (ROOSTER_BALIE_DAYS.includes(dow)) {
+                roosterState.balie[dateStr] = '';
+            }
+        }
+    }
+    roosterState.loaded = true;
+}
 
 // --- Manual save button ---
 document.getElementById('roosterSaveBtn')?.addEventListener('click', () => {
