@@ -4842,14 +4842,15 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
 
     if (!roosterChatToggle || !roosterChat) return;
 
-    // Toggle chat open
+    // Conversation history for context
+    let chatHistory = [];
+
     roosterChatToggle.addEventListener('click', () => {
         roosterChat.style.display = '';
         roosterChatToggle.style.display = 'none';
         roosterChatInput?.focus();
     });
 
-    // Close chat
     roosterChatCloseBtn?.addEventListener('click', () => {
         roosterChat.style.display = 'none';
         roosterChatToggle.style.display = '';
@@ -4868,13 +4869,14 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
 
     async function roosterChatSend() {
         const msg = roosterChatInput.value.trim();
-        if (!msg || !roosterState.loaded) return;
+        if (!msg || !roosterState.loaded) {
+            if (!roosterState.loaded) roosterChatAddMsg('Laad eerst een rooster voordat je instructies geeft.', 'ai');
+            return;
+        }
 
-        // Add user message
         roosterChatAddMsg(msg, 'user');
         roosterChatInput.value = '';
 
-        // Show typing indicator
         const typing = roosterChatAddMsg('Even denken...', 'ai typing');
 
         try {
@@ -4887,7 +4889,8 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
                     month: roosterMonthKey(),
                     slots: roosterState.coachSlots,
                     allCoaches: roosterState.allCoaches,
-                    allBalie: roosterState.allBalie
+                    allBalie: roosterState.allBalie,
+                    history: chatHistory.slice(-10) // last 10 messages for context
                 })
             });
 
@@ -4903,6 +4906,9 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
                 roosterChatAddMsg('Fout: ' + data.error, 'ai error');
                 return;
             }
+
+            // Track in history
+            chatHistory.push({ role: 'user', content: msg });
 
             // Apply changes
             if (data.changes && (
@@ -4928,9 +4934,13 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
 
                 roosterRenderAll();
                 roosterScheduleAutoSave();
-                roosterChatAddMsg(data.message + '\n\n' + changeCount + ' cel(len) aangepast.', 'ai');
+
+                const aiMsg = data.message + '\n\n✅ ' + changeCount + ' cel(len) aangepast.';
+                roosterChatAddMsg(aiMsg, 'ai');
+                chatHistory.push({ role: 'assistant', content: JSON.stringify(data) });
             } else {
                 roosterChatAddMsg(data.message || 'Geen wijzigingen gemaakt.', 'ai');
+                chatHistory.push({ role: 'assistant', content: data.message });
             }
         } catch (e) {
             if (typing.parentNode) typing.remove();
@@ -4938,7 +4948,6 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
         }
     }
 
-    // Send on button click or Enter
     roosterChatSendBtn?.addEventListener('click', roosterChatSend);
     roosterChatInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); roosterChatSend(); }
