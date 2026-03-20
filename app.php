@@ -35,7 +35,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=26">
+    <link rel="stylesheet" href="styles.css?v=27">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -1474,6 +1474,25 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 </div>
             </div>
 
+            <!-- AI Chat Widget -->
+            <div class="rooster-chat-toggle" id="roosterChatToggle" title="AI Assistent" style="display:none;">💬</div>
+            <div class="rooster-chat" id="roosterChat" style="display:none;">
+                <div class="rooster-chat-header">
+                    <span>🤖 Rooster Assistent</span>
+                    <button class="rooster-chat-close" id="roosterChatClose">&times;</button>
+                </div>
+                <div class="rooster-chat-messages" id="roosterChatMessages">
+                    <div class="rooster-chat-msg rooster-chat-ai">
+                        Hoi! Ik kan je helpen met het aanpassen van het rooster. Vertel me wat je wilt wijzigen, bijvoorbeeld:<br><br>
+                        <em>"Daniel geeft op dinsdag en donderdag Evening 1, Joran neemt Evening 2 over"</em>
+                    </div>
+                </div>
+                <div class="rooster-chat-input-row">
+                    <input type="text" id="roosterChatInput" placeholder="Typ een instructie..." class="rooster-chat-input">
+                    <button id="roosterChatSend" class="rooster-chat-send">➤</button>
+                </div>
+            </div>
+
         </div><!-- /pageRooster -->
 
         <!-- ═══ Account & Settings ═══ -->
@@ -1558,6 +1577,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         PAGES: <?= json_encode(NOTION_PAGES) ?>
     };
     </script>
-    <script src="dashboard.js?v=26"></script>
+    <script src="dashboard.js?v=27"></script>
 </body>
 </html>

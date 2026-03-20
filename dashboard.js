@@ -56,6 +56,18 @@ document.querySelectorAll('.nav-link').forEach(link => {
         document.querySelector('.page-title').textContent = PAGE_TITLES[page] || page;
         currentPage = page;
         document.getElementById('btnPdfRapport').style.display = (page === 'dashboard') ? 'inline-flex' : 'none';
+        // Show/hide rooster chat toggle based on page
+        const chatToggle = document.getElementById('roosterChatToggle');
+        const chatPanel = document.getElementById('roosterChat');
+        if (chatToggle) {
+            if (page === 'rooster') {
+                // Only show toggle if chat panel is hidden
+                if (chatPanel && chatPanel.style.display === 'none') chatToggle.style.display = '';
+            } else {
+                chatToggle.style.display = 'none';
+                if (chatPanel) chatPanel.style.display = 'none';
+            }
+        }
         updateCurrentPage();
         closeSidebar();
     });
@@ -4818,3 +4830,117 @@ document.getElementById('roosterCopyHtml')?.addEventListener('click', () => {
 document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
     roosterToast('Rooster verzenden naar Notion is nog niet beschikbaar', 'info');
 });
+
+// --- ROOSTER AI CHAT ---
+(function roosterChatInit() {
+    const roosterChatToggle = document.getElementById('roosterChatToggle');
+    const roosterChat = document.getElementById('roosterChat');
+    const roosterChatMessages = document.getElementById('roosterChatMessages');
+    const roosterChatInput = document.getElementById('roosterChatInput');
+    const roosterChatSendBtn = document.getElementById('roosterChatSend');
+    const roosterChatCloseBtn = document.getElementById('roosterChatClose');
+
+    if (!roosterChatToggle || !roosterChat) return;
+
+    // Toggle chat open
+    roosterChatToggle.addEventListener('click', () => {
+        roosterChat.style.display = '';
+        roosterChatToggle.style.display = 'none';
+        roosterChatInput?.focus();
+    });
+
+    // Close chat
+    roosterChatCloseBtn?.addEventListener('click', () => {
+        roosterChat.style.display = 'none';
+        roosterChatToggle.style.display = '';
+    });
+
+    function roosterChatAddMsg(text, type) {
+        const div = document.createElement('div');
+        div.className = 'rooster-chat-msg rooster-chat-' + type.split(' ')[0];
+        if (type.includes('typing')) div.classList.add('rooster-chat-typing');
+        if (type.includes('error')) div.classList.add('rooster-chat-error');
+        div.innerHTML = text.replace(/\n/g, '<br>');
+        roosterChatMessages.appendChild(div);
+        roosterChatMessages.scrollTop = roosterChatMessages.scrollHeight;
+        return div;
+    }
+
+    async function roosterChatSend() {
+        const msg = roosterChatInput.value.trim();
+        if (!msg || !roosterState.loaded) return;
+
+        // Add user message
+        roosterChatAddMsg(msg, 'user');
+        roosterChatInput.value = '';
+
+        // Show typing indicator
+        const typing = roosterChatAddMsg('Even denken...', 'ai typing');
+
+        try {
+            const resp = await fetch('api/rooster-ai.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({
+                    message: msg,
+                    roster: { coaches: roosterState.coaches, balie: roosterState.balie },
+                    month: roosterMonthKey(),
+                    slots: roosterState.coachSlots,
+                    allCoaches: roosterState.allCoaches,
+                    allBalie: roosterState.allBalie
+                })
+            });
+
+            typing.remove();
+
+            if (!resp.ok) {
+                const errData = await resp.json().catch(() => null);
+                throw new Error(errData?.error || 'API fout: ' + resp.status);
+            }
+            const data = await resp.json();
+
+            if (data.error) {
+                roosterChatAddMsg('Fout: ' + data.error, 'ai error');
+                return;
+            }
+
+            // Apply changes
+            if (data.changes && (
+                (data.changes.coaches && Object.keys(data.changes.coaches).length > 0) ||
+                (data.changes.balie && Object.keys(data.changes.balie).length > 0)
+            )) {
+                let changeCount = 0;
+                if (data.changes.coaches) {
+                    for (const [date, slots] of Object.entries(data.changes.coaches)) {
+                        if (!roosterState.coaches[date]) roosterState.coaches[date] = {};
+                        for (const [slot, name] of Object.entries(slots)) {
+                            roosterState.coaches[date][slot] = name;
+                            changeCount++;
+                        }
+                    }
+                }
+                if (data.changes.balie) {
+                    for (const [date, name] of Object.entries(data.changes.balie)) {
+                        roosterState.balie[date] = name;
+                        changeCount++;
+                    }
+                }
+
+                roosterRenderAll();
+                roosterScheduleAutoSave();
+                roosterChatAddMsg(data.message + '\n\n' + changeCount + ' cel(len) aangepast.', 'ai');
+            } else {
+                roosterChatAddMsg(data.message || 'Geen wijzigingen gemaakt.', 'ai');
+            }
+        } catch (e) {
+            if (typing.parentNode) typing.remove();
+            roosterChatAddMsg('Er ging iets mis: ' + e.message, 'ai error');
+        }
+    }
+
+    // Send on button click or Enter
+    roosterChatSendBtn?.addEventListener('click', roosterChatSend);
+    roosterChatInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); roosterChatSend(); }
+    });
+})();

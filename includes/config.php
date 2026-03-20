@@ -42,3 +42,8 @@ define('DATA_DIR', __DIR__ . '/../data/');
 if (file_exists(__DIR__ . '/secrets.php')) {
     require_once __DIR__ . '/secrets.php';
 }
+
+// Anthropic API — loaded from secrets.php, fallback to empty
+if (!defined('ANTHROPIC_API_KEY')) {
+    define('ANTHROPIC_API_KEY', '');
+}
