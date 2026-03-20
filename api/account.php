@@ -37,6 +37,31 @@ function writePrefs(array $data): void {
     file_put_contents($prefsFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
+// Helper: read users file
+function readUsers(): array {
+    global $usersFile;
+    if (!file_exists($usersFile)) return USERS;
+    $data = json_decode(file_get_contents($usersFile), true);
+    return is_array($data) ? $data : USERS;
+}
+
+// Helper: write users file
+function writeUsers(array $users): bool {
+    global $usersFile;
+    $fp = fopen($usersFile, 'c+');
+    if ($fp && flock($fp, LOCK_EX)) {
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($users, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        return true;
+    }
+    if ($fp) fclose($fp);
+    return false;
+}
+
 // ── GET: Profile ──────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'profile') {
     $prefs = readPrefs();
@@ -87,27 +112,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'password') {
     }
 
     // Verify current password
-    $users = USERS;
-    if (!isset($users[$username]) || !password_verify($current, $users[$username])) {
+    $userData = getUserData($username);
+    if (!$userData || !password_verify($current, $userData['password'])) {
         http_response_code(403);
         echo json_encode(['error' => 'Huidig wachtwoord is onjuist']);
         exit;
     }
 
     // Hash new password and save
-    $users[$username] = password_hash($new, PASSWORD_BCRYPT);
+    $users = readUsers();
+    if (is_array($users[$username] ?? null)) {
+        $users[$username]['password'] = password_hash($new, PASSWORD_BCRYPT);
+    } else {
+        $users[$username] = password_hash($new, PASSWORD_BCRYPT);
+    }
 
-    $fp = fopen($usersFile, 'c+');
-    if ($fp && flock($fp, LOCK_EX)) {
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($users, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
+    if (writeUsers($users)) {
         echo json_encode(['ok' => true, 'message' => 'Wachtwoord gewijzigd']);
     } else {
-        if ($fp) fclose($fp);
         http_response_code(500);
         echo json_encode(['error' => 'Kon wachtwoord niet opslaan']);
     }
@@ -188,5 +210,143 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'theme') {
     exit;
 }
 
+// ── GET: List Users (admin only) ─────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'users') {
+    if (!isAdmin()) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Geen toegang']);
+        exit;
+    }
+
+    $users = readUsers();
+    $result = [];
+    foreach ($users as $uname => $data) {
+        if (is_array($data)) {
+            $result[] = [
+                'username' => $uname,
+                'role' => $data['role'] ?? 'user',
+                'pages' => $data['pages'] ?? [],
+            ];
+        } else {
+            $result[] = [
+                'username' => $uname,
+                'role' => 'admin',
+                'pages' => ALL_PAGES,
+            ];
+        }
+    }
+    echo json_encode($result);
+    exit;
+}
+
+// ── POST: Create/Update User (admin only) ────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'user-save') {
+    if (!isAdmin()) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Geen toegang']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $targetUser = strtolower(trim($input['username'] ?? ''));
+    $password = $input['password'] ?? '';
+    $role = $input['role'] ?? 'user';
+    $pages = $input['pages'] ?? [];
+    $isNew = $input['isNew'] ?? false;
+
+    if (!$targetUser || !preg_match('/^[a-z0-9_]{2,30}$/', $targetUser)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Ongeldige gebruikersnaam (2-30 tekens, letters/cijfers/underscore)']);
+        exit;
+    }
+
+    if (!in_array($role, ['admin', 'user'])) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Ongeldige rol']);
+        exit;
+    }
+
+    // Filter pages to only valid ones
+    $pages = array_values(array_intersect($pages, ALL_PAGES));
+
+    $users = readUsers();
+
+    if ($isNew && isset($users[$targetUser])) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Gebruiker bestaat al']);
+        exit;
+    }
+
+    if ($isNew && (!$password || strlen($password) < 6)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Wachtwoord moet minimaal 6 tekens zijn']);
+        exit;
+    }
+
+    // Build user data
+    $userData = [
+        'role' => $role,
+        'pages' => $role === 'admin' ? ALL_PAGES : $pages,
+    ];
+
+    // Set or keep password
+    if ($password) {
+        $userData['password'] = password_hash($password, PASSWORD_BCRYPT);
+    } elseif (isset($users[$targetUser]) && is_array($users[$targetUser])) {
+        $userData['password'] = $users[$targetUser]['password'];
+    } elseif (isset($users[$targetUser]) && is_string($users[$targetUser])) {
+        $userData['password'] = $users[$targetUser];
+    } else {
+        http_response_code(400);
+        echo json_encode(['error' => 'Wachtwoord is verplicht voor nieuwe gebruiker']);
+        exit;
+    }
+
+    $users[$targetUser] = $userData;
+
+    if (writeUsers($users)) {
+        echo json_encode(['ok' => true, 'message' => $isNew ? 'Gebruiker aangemaakt' : 'Gebruiker bijgewerkt']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['error' => 'Kon niet opslaan']);
+    }
+    exit;
+}
+
+// ── POST: Delete User (admin only) ───────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'user-delete') {
+    if (!isAdmin()) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Geen toegang']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $targetUser = strtolower(trim($input['username'] ?? ''));
+
+    if ($targetUser === $username) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Je kunt je eigen account niet verwijderen']);
+        exit;
+    }
+
+    $users = readUsers();
+    if (!isset($users[$targetUser])) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Gebruiker niet gevonden']);
+        exit;
+    }
+
+    unset($users[$targetUser]);
+
+    if (writeUsers($users)) {
+        echo json_encode(['ok' => true, 'message' => 'Gebruiker verwijderd']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['error' => 'Kon niet opslaan']);
+    }
+    exit;
+}
+
 http_response_code(400);
-echo json_encode(['error' => 'Ongeldige actie. Gebruik ?action=profile|password|avatar|theme']);
+echo json_encode(['error' => 'Ongeldige actie']);

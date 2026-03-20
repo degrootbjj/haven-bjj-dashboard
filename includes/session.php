@@ -75,20 +75,64 @@ function requireCsrf(): void {
 }
 
 /**
+ * Get user data from USERS constant. Supports both old (hash-only) and new (object) format.
+ * Returns ['password' => hash, 'role' => role, 'pages' => [...]] or null if not found.
+ */
+function getUserData(string $username): ?array {
+    $users = USERS;
+    if (!isset($users[$username])) return null;
+    $data = $users[$username];
+    // Old format: just a password hash string
+    if (is_string($data)) {
+        return ['password' => $data, 'role' => 'admin', 'pages' => ALL_PAGES];
+    }
+    // New format: object with password, role, pages
+    return [
+        'password' => $data['password'] ?? '',
+        'role' => $data['role'] ?? 'user',
+        'pages' => $data['pages'] ?? [],
+    ];
+}
+
+/**
+ * Check if current user is admin.
+ */
+function isAdmin(): bool {
+    return ($_SESSION['role'] ?? '') === 'admin';
+}
+
+/**
+ * Get allowed pages for current user.
+ */
+function getUserPages(): array {
+    return $_SESSION['pages'] ?? [];
+}
+
+/**
+ * Check if current user has access to a specific page.
+ */
+function hasPageAccess(string $page): bool {
+    if (isAdmin()) return true;
+    return in_array($page, getUserPages());
+}
+
+/**
  * Attempt login. Returns true on success, false on failure.
  */
 function attemptLogin(string $username, string $password): bool {
-    $users = USERS;
-    if (!isset($users[$username])) {
+    $userData = getUserData($username);
+    if (!$userData) {
         // Constant-time comparison to prevent username enumeration
         password_verify($password, '$2y$12$invalidsaltinvalidsaltinvalidsaltinvalidsaltinvali');
         return false;
     }
 
-    if (password_verify($password, $users[$username])) {
+    if (password_verify($password, $userData['password'])) {
         // Regenerate session ID to prevent fixation
         session_regenerate_id(true);
         $_SESSION['user'] = $username;
+        $_SESSION['role'] = $userData['role'];
+        $_SESSION['pages'] = $userData['pages'];
         $_SESSION['login_time'] = time();
         getCsrfToken(); // Generate CSRF token on login
         return true;

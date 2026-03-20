@@ -4,6 +4,16 @@ requireAuth();
 $csrfToken = getCsrfToken();
 $gymName = GYM_NAME;
 $currentUser = $_SESSION['user'];
+$isAdmin = isAdmin();
+$userPages = getUserPages();
+
+// Page labels for nav display
+$pageLabels = [
+    'dashboard' => 'Dashboard', 'leden' => 'Leden', 'financien' => 'Financiën',
+    'lessen' => 'Lessen', 'marketing' => 'Marketing', 'nieuwsbrief' => 'Crew Briefing',
+    'mailnewsletter' => 'Newsletter', 'uploads' => 'Uploads', 'simulator' => 'Simulator',
+    'rooster' => 'Rooster', 'gyminfo' => 'Gym Info',
+];
 
 // Load user preferences (theme, avatar)
 $prefsFile = DATA_DIR . 'preferences.json';
@@ -35,7 +45,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=31">
+    <link rel="stylesheet" href="styles.css?v=32">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -47,51 +57,36 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
             </div>
             <button class="sidebar-close" id="sidebarClose" aria-label="Sluit menu">✕</button>
         </div>
+        <?php
+        // Nav icons per page
+        $pageIcons = [
+            'dashboard' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+            'leden' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+            'financien' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+            'lessen' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+            'marketing' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+            'nieuwsbrief' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+            'mailnewsletter' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+            'uploads' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+            'simulator' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>',
+            'rooster' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="22"/><line x1="15" y1="4" x2="15" y2="22"/><line x1="3" y1="16" x2="21" y2="16"/></svg>',
+            'gyminfo' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        ];
+        // Determine which pages this user can see
+        $visiblePages = $isAdmin ? ALL_PAGES : $userPages;
+        $firstPage = $visiblePages[0] ?? 'dashboard';
+        ?>
         <ul class="nav-links">
-            <li><a href="#" class="nav-link active" data-page="dashboard">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                Dashboard
+            <?php foreach ($visiblePages as $page):
+                $icon = $pageIcons[$page] ?? '';
+                $label = $pageLabels[$page] ?? ucfirst($page);
+                $activeClass = ($page === $firstPage) ? ' active' : '';
+            ?>
+            <li><a href="#" class="nav-link<?= $activeClass ?>" data-page="<?= $page ?>">
+                <?= $icon ?>
+                <?= htmlspecialchars($label) ?>
             </a></li>
-            <li><a href="#" class="nav-link" data-page="leden">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Leden
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="financien">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                Financiën
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="lessen">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                Lessen
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="marketing">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                Marketing
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="nieuwsbrief">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                Crew Briefing
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="mailnewsletter">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-                Newsletter
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="uploads">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Uploads
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="simulator">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-                Simulator
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="rooster">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="22"/><line x1="15" y1="4" x2="15" y2="22"/><line x1="3" y1="16" x2="21" y2="16"/></svg>
-                Rooster
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="gyminfo">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                Gym Info
-            </a></li>
+            <?php endforeach; ?>
         </ul>
         <div class="sidebar-bottom">
             <a href="#" class="nav-link sidebar-account-link" data-page="account">
@@ -1505,7 +1500,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                         </div>
                         <div class="account-user-info">
                             <div class="account-username"><?= htmlspecialchars(ucfirst($currentUser)) ?></div>
-                            <div class="account-role">Beheerder</div>
+                            <div class="account-role"><?= $isAdmin ? 'Beheerder' : 'Gebruiker' ?></div>
                         </div>
                     </div>
                 </div>
@@ -1548,6 +1543,19 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                         </div>
                     </div>
                 </div>
+
+                <?php if ($isAdmin): ?>
+                <!-- Admin: User Management -->
+                <div class="card account-card account-users-card">
+                    <h3 class="account-card-title">Gebruikersbeheer</h3>
+                    <p class="account-hint">Beheer accounts en paginatoegang.</p>
+                    <div id="userManagementList"></div>
+                    <button class="btn-primary" id="addUserBtn" style="margin-top: 16px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nieuwe gebruiker
+                    </button>
+                </div>
+                <?php endif; ?>
             </div>
         </div><!-- /pageAccount -->
 
@@ -1562,11 +1570,19 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <!-- Notion config embedded by PHP -->
     <script>
     const NOTION_CONFIG = {
-        API_KEY: '', // Not needed client-side, proxy handles auth
+        API_KEY: '',
         PROXY_URL: 'api/notion-proxy.php',
         PAGES: <?= json_encode(NOTION_PAGES) ?>
     };
+    const USER_CONFIG = {
+        username: <?= json_encode($currentUser) ?>,
+        role: <?= json_encode($isAdmin ? 'admin' : 'user') ?>,
+        pages: <?= json_encode($isAdmin ? ALL_PAGES : $userPages) ?>,
+        isAdmin: <?= $isAdmin ? 'true' : 'false' ?>,
+        allPages: <?= json_encode(ALL_PAGES) ?>,
+        pageLabels: <?= json_encode($pageLabels) ?>
+    };
     </script>
-    <script src="dashboard.js?v=31"></script>
+    <script src="dashboard.js?v=32"></script>
 </body>
 </html>

@@ -2,7 +2,11 @@
 // Haven BJJ Dashboard — Configuration
 // ⚠️ Change these values for each installation!
 
+// All available pages in the dashboard
+define('ALL_PAGES', ['dashboard', 'leden', 'financien', 'lessen', 'marketing', 'nieuwsbrief', 'mailnewsletter', 'uploads', 'simulator', 'rooster', 'gyminfo']);
+
 // User accounts: loaded from data/users.json (editable via Account page)
+// Format: { "username": { "password": "hash", "role": "admin|user", "pages": [...] } }
 // Fallback to hardcoded if JSON doesn't exist yet
 $usersFile = __DIR__ . '/../data/users.json';
 if (file_exists($usersFile)) {
@@ -13,7 +17,16 @@ if (file_exists($usersFile)) {
 }
 if (!defined('USERS')) {
     define('USERS', [
-        'daniel' => '$2b$12$W0QYd7Q17qJieGp.H702rOYx6h2c2Ipc7NrU868Nu54qrFxATRVWi',
+        'daniel' => [
+            'password' => '$2b$12$W0QYd7Q17qJieGp.H702rOYx6h2c2Ipc7NrU868Nu54qrFxATRVWi',
+            'role' => 'admin',
+            'pages' => ALL_PAGES,
+        ],
+        'savage' => [
+            'password' => '$2y$12$eh4MfM3W.5tUXRckUPqq.u9JvGg1Vpm1r2.bjOuj1jCNvc7opupHC',
+            'role' => 'user',
+            'pages' => ['dashboard', 'leden', 'rooster'],
+        ],
     ]);
 }
 

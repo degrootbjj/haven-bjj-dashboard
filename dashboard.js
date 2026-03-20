@@ -48,6 +48,8 @@ document.querySelectorAll('.nav-link').forEach(link => {
         e.preventDefault();
         const page = link.dataset.page;
         if (!document.getElementById('page' + page.charAt(0).toUpperCase() + page.slice(1))) return;
+        // Check page access (account page always allowed)
+        if (typeof USER_CONFIG !== 'undefined' && page !== 'account' && !USER_CONFIG.pages.includes(page)) return;
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2994,6 +2996,183 @@ document.querySelectorAll('.theme-option').forEach(btn => {
         }
     });
 });
+
+// ============================================
+// Admin: User Management
+// ============================================
+if (typeof USER_CONFIG !== 'undefined' && USER_CONFIG.isAdmin) {
+(function userManagementInit() {
+    const listEl = document.getElementById('userManagementList');
+    const addBtn = document.getElementById('addUserBtn');
+    if (!listEl) return;
+
+    let usersData = [];
+
+    async function loadUsers() {
+        try {
+            const resp = await fetch('api/account.php?action=users');
+            if (!resp.ok) throw new Error('Laden mislukt');
+            usersData = await resp.json();
+            renderUsers();
+        } catch (err) {
+            listEl.innerHTML = '<p style="color:var(--red)">Kon gebruikers niet laden.</p>';
+        }
+    }
+
+    function renderUsers() {
+        let html = '';
+        for (const u of usersData) {
+            const isCurrentUser = u.username === USER_CONFIG.username;
+            const roleLabel = u.role === 'admin' ? 'Beheerder' : 'Gebruiker';
+            const pageChips = u.role === 'admin'
+                ? '<span class="um-chip um-chip-admin">Alle pagina\'s</span>'
+                : (u.pages || []).map(p => `<span class="um-chip">${USER_CONFIG.pageLabels[p] || p}</span>`).join('');
+
+            html += `<div class="um-user-card" data-username="${u.username}">
+                <div class="um-user-header">
+                    <div class="um-user-info">
+                        <span class="um-user-name">${ucfirst(u.username)}</span>
+                        <span class="um-user-role um-role-${u.role}">${roleLabel}</span>
+                    </div>
+                    <div class="um-user-actions">
+                        <button class="btn-sm btn-secondary um-edit-btn" data-user="${u.username}">Bewerken</button>
+                        ${!isCurrentUser ? `<button class="btn-sm um-delete-btn" data-user="${u.username}">Verwijderen</button>` : ''}
+                    </div>
+                </div>
+                <div class="um-pages-row">${pageChips}</div>
+            </div>`;
+        }
+        listEl.innerHTML = html;
+
+        // Bind edit buttons
+        listEl.querySelectorAll('.um-edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => openUserModal(btn.dataset.user));
+        });
+        listEl.querySelectorAll('.um-delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => deleteUser(btn.dataset.user));
+        });
+    }
+
+    function ucfirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    // Modal
+    function openUserModal(editUsername) {
+        const isNew = !editUsername;
+        const existing = editUsername ? usersData.find(u => u.username === editUsername) : null;
+        const title = isNew ? 'Nieuwe gebruiker' : `Bewerk ${ucfirst(editUsername)}`;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'um-modal-overlay';
+
+        const allPages = USER_CONFIG.allPages;
+        const currentPages = existing ? (existing.pages || []) : [];
+        const currentRole = existing ? existing.role : 'user';
+
+        let pagesHtml = '';
+        for (const p of allPages) {
+            const checked = currentRole === 'admin' || currentPages.includes(p) ? 'checked' : '';
+            const label = USER_CONFIG.pageLabels[p] || p;
+            pagesHtml += `<label class="um-page-check"><input type="checkbox" value="${p}" ${checked}> ${label}</label>`;
+        }
+
+        overlay.innerHTML = `<div class="um-modal">
+            <h3 class="um-modal-title">${title}</h3>
+            <div class="um-modal-form">
+                <div class="account-field">
+                    <label>Gebruikersnaam</label>
+                    <input type="text" id="umUsername" value="${editUsername || ''}" ${!isNew ? 'disabled' : ''} placeholder="bijv. savage" autocomplete="off">
+                </div>
+                <div class="account-field">
+                    <label>${isNew ? 'Wachtwoord' : 'Nieuw wachtwoord (leeg = ongewijzigd)'}</label>
+                    <input type="password" id="umPassword" placeholder="${isNew ? 'Minimaal 6 tekens' : 'Laat leeg om niet te wijzigen'}" autocomplete="new-password">
+                </div>
+                <div class="account-field">
+                    <label>Rol</label>
+                    <div class="um-role-toggle">
+                        <button class="um-role-btn ${currentRole === 'user' ? 'active' : ''}" data-role="user">Gebruiker</button>
+                        <button class="um-role-btn ${currentRole === 'admin' ? 'active' : ''}" data-role="admin">Beheerder</button>
+                    </div>
+                </div>
+                <div class="account-field um-pages-section" id="umPagesSection" style="${currentRole === 'admin' ? 'display:none' : ''}">
+                    <label>Paginatoegang</label>
+                    <div class="um-pages-grid">${pagesHtml}</div>
+                </div>
+                <div class="um-modal-msg" id="umModalMsg"></div>
+                <div class="um-modal-actions">
+                    <button class="btn-secondary" id="umCancel">Annuleren</button>
+                    <button class="btn-primary" id="umSave">Opslaan</button>
+                </div>
+            </div>
+        </div>`;
+
+        document.body.appendChild(overlay);
+
+        // Role toggle
+        let selectedRole = currentRole;
+        overlay.querySelectorAll('.um-role-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                overlay.querySelectorAll('.um-role-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedRole = btn.dataset.role;
+                document.getElementById('umPagesSection').style.display = selectedRole === 'admin' ? 'none' : '';
+            });
+        });
+
+        // Close
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        document.getElementById('umCancel').addEventListener('click', () => overlay.remove());
+
+        // Save
+        document.getElementById('umSave').addEventListener('click', async () => {
+            const uname = document.getElementById('umUsername').value.trim().toLowerCase();
+            const pw = document.getElementById('umPassword').value;
+            const pages = [];
+            overlay.querySelectorAll('.um-pages-grid input[type=checkbox]:checked').forEach(cb => pages.push(cb.value));
+            const msgEl = document.getElementById('umModalMsg');
+
+            try {
+                const resp = await fetch('api/account.php?action=user-save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    body: JSON.stringify({ username: uname, password: pw, role: selectedRole, pages, isNew })
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    msgEl.textContent = data.error || 'Fout bij opslaan';
+                    msgEl.style.color = 'var(--red)';
+                    return;
+                }
+                overlay.remove();
+                loadUsers();
+            } catch (err) {
+                msgEl.textContent = 'Netwerkfout';
+                msgEl.style.color = 'var(--red)';
+            }
+        });
+    }
+
+    async function deleteUser(uname) {
+        if (!confirm(`Weet je zeker dat je "${ucfirst(uname)}" wilt verwijderen?`)) return;
+        try {
+            const resp = await fetch('api/account.php?action=user-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ username: uname })
+            });
+            const data = await resp.json();
+            if (!resp.ok) { alert(data.error || 'Fout'); return; }
+            loadUsers();
+        } catch (err) {
+            alert('Netwerkfout');
+        }
+    }
+
+    addBtn?.addEventListener('click', () => openUserModal(null));
+
+    // Load on init
+    loadUsers();
+})();
+}
 
 // ============================================
 // Newsletter (Mailchimp) Page

@@ -1650,6 +1650,206 @@ body {
     }
 }
 
+/* ── User Management (Admin) ── */
+.account-users-card {
+    grid-column: 1 / -1;
+}
+
+.account-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.um-user-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+}
+
+.um-user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.um-user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.um-user-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.um-user-role {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.um-role-admin {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.um-role-user {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+}
+
+.um-user-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.um-delete-btn {
+    background: none;
+    border: 1px solid var(--red);
+    color: var(--red);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.um-delete-btn:hover {
+    background: var(--red);
+    color: white;
+}
+
+.um-pages-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.um-chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.um-chip-admin {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Modal */
+.um-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+}
+
+.um-modal {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+}
+
+.um-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+}
+
+.um-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.um-role-toggle {
+    display: flex;
+    gap: 8px;
+}
+
+.um-role-btn {
+    flex: 1;
+    padding: 8px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.um-role-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.um-pages-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.um-page-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background 0.1s;
+}
+
+.um-page-check:hover {
+    background: var(--bg);
+}
+
+.um-page-check input[type=checkbox] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+}
+
+.um-modal-msg {
+    font-size: 13px;
+    min-height: 18px;
+}
+
+.um-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
 /* ── Newsletter (Mailchimp) Page ── */
 .nl-steps {
     display: flex;
