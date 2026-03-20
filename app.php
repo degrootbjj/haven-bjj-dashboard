@@ -35,7 +35,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=25">
+    <link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -1558,6 +1558,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         PAGES: <?= json_encode(NOTION_PAGES) ?>
     };
     </script>
-    <script src="dashboard.js?v=25"></script>
+    <script src="dashboard.js?v=26"></script>
 </body>
 </html>

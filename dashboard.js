@@ -3983,44 +3983,73 @@ document.getElementById('roosterLoadNotionBtn')?.addEventListener('click', async
 // --- Show options when Notion has no data for this month ---
 async function roosterShowNoNotionOptions(month, year, errMsg) {
     const errorEl = document.getElementById('roosterError');
+    const loading = document.getElementById('roosterLoading');
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
-    const prevKey = prevYear + '-' + String(prevMonth).padStart(2, '0');
     const prevName = ROOSTER_MONTHS_NL[prevMonth - 1] + ' ' + prevYear;
     const monthName = ROOSTER_MONTHS_NL[month - 1] + ' ' + year;
 
-    // Check if previous month draft exists
-    const prevDraft = await roosterLoadDraft(prevKey);
+    // First: try loading previous month from Notion automatically
+    loading.style.display = 'flex';
+    loading.querySelector('span').textContent = 'Vorige maand laden uit Notion als basis...';
+    errorEl.style.display = 'none';
 
-    let html = `<div style="text-align:center;padding:24px;">
-        <div style="font-size:48px;margin-bottom:12px;">📋</div>
-        <h3 style="margin:0 0 8px;">Geen Notion-data voor ${monthName}</h3>
-        <p style="color:var(--text-secondary);margin:0 0 20px;">${errMsg ? errMsg : 'Er is nog geen roosterpagina aangemaakt in Notion voor deze maand.'}</p>
-        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">`;
+    try {
+        const prevMName = ROOSTER_MONTHS_EN[prevMonth - 1];
+        const [prevCoachTables, prevBalieTables] = await Promise.all([
+            nbFetchMonthSchedule(nbCache.coaches, nbCache.coachPages || [], 'coaches', prevMName),
+            nbFetchMonthSchedule(nbCache.balie, nbCache.baliePages || [], 'balie', prevMName)
+        ]);
 
-    if (prevDraft && prevDraft.coaches) {
-        html += `<button class="btn-primary" id="roosterCopyPrev" style="padding:10px 20px;">
-            📋 Kopieer van ${prevName}
-        </button>`;
+        if (prevCoachTables || prevBalieTables) {
+            // Parse previous month data into a temporary state
+            const tmpState = { ...roosterState };
+            roosterParseNotionData(prevCoachTables, prevBalieTables, prevMonth, prevYear);
+            const prevData = {
+                coaches: roosterState.coaches,
+                balie: roosterState.balie,
+                allCoaches: roosterState.allCoaches,
+                allBalie: roosterState.allBalie,
+                coachSlots: roosterState.coachSlots,
+                slotHistory: roosterState.slotHistory
+            };
+            // Convert slotHistory Sets to arrays for copy function
+            const prevDraftForCopy = { ...prevData };
+            const sh = {};
+            for (const [slot, names] of Object.entries(prevData.slotHistory || {})) {
+                sh[slot] = names instanceof Set ? [...names] : (names || []);
+            }
+            prevDraftForCopy.slotHistory = sh;
+
+            // Now copy to new month
+            roosterCopyFromPrevMonth(prevDraftForCopy, month, year);
+            loading.style.display = 'none';
+            roosterShowWorkspace();
+            roosterRenderAll();
+            roosterUpdateStatus('unsaved', 'Niet opgeslagen');
+            roosterToast(monthName + ' aangemaakt op basis van ' + prevName, 'success');
+            roosterSaveDraft();
+            return;
+        }
+    } catch (e) {
+        console.log('Previous month also not found in Notion:', e);
     }
 
-    html += `<button class="btn-secondary" id="roosterCreateEmpty" style="padding:10px 20px;">
-            ➕ Leeg rooster maken
-        </button>
+    loading.style.display = 'none';
+
+    // Fallback: show manual options
+    let html = `<div style="text-align:center;padding:24px;">
+        <div style="font-size:48px;margin-bottom:12px;">📋</div>
+        <h3 style="margin:0 0 8px;">Geen Notion-data voor ${monthName} of ${prevName}</h3>
+        <p style="color:var(--text-secondary);margin:0 0 20px;">Maak een leeg rooster aan en vul het handmatig in.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button class="btn-primary" id="roosterCreateEmpty" style="padding:10px 20px;">
+                ➕ Leeg rooster maken
+            </button>
         </div></div>`;
 
     errorEl.innerHTML = html;
     errorEl.style.display = '';
-
-    document.getElementById('roosterCopyPrev')?.addEventListener('click', async () => {
-        roosterCopyFromPrevMonth(prevDraft, month, year);
-        errorEl.style.display = 'none';
-        roosterShowWorkspace();
-        roosterRenderAll();
-        roosterUpdateStatus('unsaved', 'Niet opgeslagen');
-        roosterToast('Rooster gekopieerd van ' + prevName, 'success');
-        roosterSaveDraft();
-    });
 
     document.getElementById('roosterCreateEmpty')?.addEventListener('click', () => {
         roosterCreateEmpty(month, year);
@@ -4033,6 +4062,16 @@ async function roosterShowNoNotionOptions(month, year, errMsg) {
     });
 }
 
+// --- Helper: get all Date objects for a month ---
+function roosterAllDatesInMonth(month, year) {
+    const dates = [];
+    const daysInMonth = new Date(year, month, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+        dates.push(new Date(year, month - 1, day));
+    }
+    return dates;
+}
+
 // --- Copy from previous month (shift dates to new month) ---
 function roosterCopyFromPrevMonth(prevDraft, month, year) {
     roosterState.month = month;
@@ -4043,25 +4082,27 @@ function roosterCopyFromPrevMonth(prevDraft, month, year) {
     roosterState.absences = {};
     roosterState.absenceTexts = {};
 
-    // Get dates for new month grouped by week
-    const dates = roosterGetMonthDates(year, month);
     const prevCoaches = prevDraft.coaches || {};
     const prevBalie = prevDraft.balie || {};
 
-    // Build a template: for each day-of-week + slot, find the most common assignment from prev month
-    const coachTemplate = {}; // dayOfWeek -> slot -> name
-    const balieTemplate = {}; // dayOfWeek -> name
+    // Build a template: for each day-of-week + slot, find the most common assignment
+    const coachTemplate = {};
+    const balieTemplate = {};
     for (const [dateStr, slots] of Object.entries(prevCoaches)) {
-        const d = new Date(dateStr);
+        const d = new Date(dateStr + 'T00:00:00');
         const dow = d.getDay();
         if (!coachTemplate[dow]) coachTemplate[dow] = {};
-        for (const [slot, name] of Object.entries(slots)) {
-            if (!coachTemplate[dow][slot]) coachTemplate[dow][slot] = {};
-            coachTemplate[dow][slot][name] = (coachTemplate[dow][slot][name] || 0) + 1;
+        if (typeof slots === 'object' && slots) {
+            for (const [slot, name] of Object.entries(slots)) {
+                if (!name) continue;
+                if (!coachTemplate[dow][slot]) coachTemplate[dow][slot] = {};
+                coachTemplate[dow][slot][name] = (coachTemplate[dow][slot][name] || 0) + 1;
+            }
         }
     }
     for (const [dateStr, name] of Object.entries(prevBalie)) {
-        const d = new Date(dateStr);
+        if (!name) continue;
+        const d = new Date(dateStr + 'T00:00:00');
         const dow = d.getDay();
         if (!balieTemplate[dow]) balieTemplate[dow] = {};
         balieTemplate[dow][name] = (balieTemplate[dow][name] || 0) + 1;
@@ -4070,25 +4111,29 @@ function roosterCopyFromPrevMonth(prevDraft, month, year) {
     // Apply template to new month
     roosterState.coaches = {};
     roosterState.balie = {};
-    for (const week of dates) {
-        for (const d of week) {
-            const dateStr = roosterDateStr(d);
-            const dow = d.getDay();
-            // Coaches
-            if (ROOSTER_COACH_DAYS.includes(dow) && coachTemplate[dow]) {
-                roosterState.coaches[dateStr] = {};
+    const allDates = roosterAllDatesInMonth(month, year);
+    for (const d of allDates) {
+        const dateStr = roosterDateStr(d);
+        const dow = d.getDay();
+        // Coaches
+        if (ROOSTER_COACH_DAYS.includes(dow)) {
+            roosterState.coaches[dateStr] = {};
+            if (coachTemplate[dow]) {
                 for (const slot of roosterState.coachSlots) {
                     if (coachTemplate[dow][slot]) {
-                        // Pick most frequent name
                         const best = Object.entries(coachTemplate[dow][slot]).sort((a, b) => b[1] - a[1])[0];
                         if (best) roosterState.coaches[dateStr][slot] = best[0];
                     }
                 }
             }
-            // Balie
-            if (ROOSTER_BALIE_DAYS.includes(dow) && balieTemplate[dow]) {
+        }
+        // Balie
+        if (ROOSTER_BALIE_DAYS.includes(dow)) {
+            if (balieTemplate[dow]) {
                 const best = Object.entries(balieTemplate[dow]).sort((a, b) => b[1] - a[1])[0];
-                if (best) roosterState.balie[dateStr] = best[0];
+                roosterState.balie[dateStr] = best ? best[0] : '';
+            } else {
+                roosterState.balie[dateStr] = '';
             }
         }
     }
@@ -4096,7 +4141,7 @@ function roosterCopyFromPrevMonth(prevDraft, month, year) {
     roosterState.slotHistory = {};
     if (prevDraft.slotHistory) {
         for (const [slot, names] of Object.entries(prevDraft.slotHistory)) {
-            roosterState.slotHistory[slot] = new Set(names);
+            roosterState.slotHistory[slot] = new Set(Array.isArray(names) ? names : []);
         }
     }
     roosterState.loaded = true;
@@ -4115,18 +4160,15 @@ function roosterCreateEmpty(month, year) {
     roosterState.coachSlots = [...ROOSTER_COACH_SLOTS];
     roosterState.slotHistory = {};
 
-    // Create empty cells for all dates
-    const dates = roosterGetMonthDates(year, month);
-    for (const week of dates) {
-        for (const d of week) {
-            const dateStr = roosterDateStr(d);
-            const dow = d.getDay();
-            if (ROOSTER_COACH_DAYS.includes(dow)) {
-                roosterState.coaches[dateStr] = {};
-            }
-            if (ROOSTER_BALIE_DAYS.includes(dow)) {
-                roosterState.balie[dateStr] = '';
-            }
+    const allDates = roosterAllDatesInMonth(month, year);
+    for (const d of allDates) {
+        const dateStr = roosterDateStr(d);
+        const dow = d.getDay();
+        if (ROOSTER_COACH_DAYS.includes(dow)) {
+            roosterState.coaches[dateStr] = {};
+        }
+        if (ROOSTER_BALIE_DAYS.includes(dow)) {
+            roosterState.balie[dateStr] = '';
         }
     }
     roosterState.loaded = true;
