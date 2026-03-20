@@ -686,7 +686,7 @@ body {
 
 @media (max-width: 480px) {
     .kpi-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
     }
 
     .activity-time {
@@ -2729,15 +2729,23 @@ body {
     .rooster-topbar {
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
     }
     .rooster-topbar-left {
         flex-wrap: wrap;
+        gap: 8px;
     }
     .rooster-topbar-actions {
         flex-wrap: wrap;
+        gap: 8px;
+    }
+    .rooster-field {
+        flex: 1;
+        min-width: 0;
     }
     .rooster-select {
-        min-width: 100%;
+        min-width: 0;
+        width: 100%;
     }
     .rooster-main-layout {
         flex-direction: column;
@@ -2752,15 +2760,60 @@ body {
     .rooster-sidebar.collapsed {
         display: none;
     }
+
+    /* Rooster table: horizontally scrollable with compact cells */
+    .rooster-week-block {
+        margin-bottom: 14px;
+    }
+    .rooster-week-header {
+        padding: 8px 4px;
+    }
+    .rooster-week-label {
+        font-size: 14px;
+    }
+    .rooster-week-range {
+        font-size: 11px;
+    }
+    .rooster-grid-wrap {
+        margin: 0 -16px;
+        padding: 0 16px;
+    }
     .rooster-table {
         font-size: 11px;
+        min-width: 520px;
     }
     .rooster-table th,
     .rooster-table td {
-        padding: 4px 6px;
+        padding: 5px 4px;
+        white-space: nowrap;
+    }
+    .rooster-th-slot,
+    .rooster-td-slot {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background: var(--surface);
+        font-size: 10px;
+        min-width: 65px;
+        max-width: 65px;
+    }
+    .rooster-th-slot {
+        background: var(--bg);
     }
     .rooster-cell {
-        min-width: 50px;
+        min-width: 55px;
+        font-size: 10px;
+    }
+
+    /* Tabs compact */
+    .rooster-tab {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    /* Chat in sidebar on mobile */
+    .rooster-sidebar-chat .rooster-chat-messages {
+        max-height: 250px;
     }
 }
 
