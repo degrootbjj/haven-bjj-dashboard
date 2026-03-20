@@ -35,7 +35,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20">
+    <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -961,17 +961,9 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <!-- Handmatige invoer -->
                 <div class="card upload-card" id="uploadManual">
                     <div class="card-header">
-                        <div><h3>Handmatige Invoer</h3><span class="card-subtitle">Trials, Zettle, lessen & deelnemers</span></div>
+                        <div><h3>Handmatige Invoer</h3><span class="card-subtitle">Zettle, lessen & deelnemers</span></div>
                     </div>
                     <div class="manual-inputs">
-                        <div class="sim-input-group">
-                            <label for="inputTrialsAdults">Trials Adults <span class="info-tooltip" title="Grib → Club Intelligence → Proefleden">ⓘ</span></label>
-                            <input type="number" class="sim-input" id="inputTrialsAdults" placeholder="bijv. 35">
-                        </div>
-                        <div class="sim-input-group">
-                            <label for="inputTrialsU18">Trials U18 <span class="info-tooltip" title="Grib → Club Intelligence → Proefleden (onder 18)">ⓘ</span></label>
-                            <input type="number" class="sim-input" id="inputTrialsU18" placeholder="bijv. 10">
-                        </div>
                         <div class="sim-input-group">
                             <label for="inputZettle">Zettle omzet (€) <span class="info-tooltip" title="Zettle → Omzet → Rapport">ⓘ</span></label>
                             <input type="number" class="sim-input" id="inputZettle" placeholder="bijv. 2450.50" step="0.01">
@@ -1430,6 +1422,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         PAGES: <?= json_encode(NOTION_PAGES) ?>
     };
     </script>
-    <script src="dashboard.js?v=20"></script>
+    <script src="dashboard.js?v=21"></script>
 </body>
 </html>

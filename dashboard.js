@@ -2402,7 +2402,7 @@ UPLOAD_CONFIGS.forEach(cfg => {
 });
 
 // Manual input listeners
-['inputTrialsAdults', 'inputTrialsU18', 'inputZettle', 'inputSessions', 'inputParticipants'].forEach(id => {
+['inputZettle', 'inputSessions', 'inputParticipants'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => renderUploadPreview(monthSelect.value));
 });
 
@@ -2444,25 +2444,42 @@ function renderUploadPreview(ym) {
         return val.toString().slice(0, 7);
     }
 
-    // Only count real memberships (Yearly/Monthly variants), exclude trials, weeks, coaches etc.
-    function isRealMembership(row) {
-        const sub = (row['subscription'] || row['Subscription'] || row['naam_abonnement'] || '').toString().toLowerCase();
-        return sub.includes('monthly') || sub.includes('maand') || sub.includes('yearly') || sub.includes('jaar') || sub.includes('membership');
+    // Subscription classification
+    const REAL_MEMBERSHIP_TYPES = [
+        'monthly membership', 'yearly membership', 'yearly membership student',
+        'yearly membership under 18', 'monthly membership student', 'monthly membership under 18',
+        'yearly membership founding member student / under 18', 'sponsored membership'
+    ];
+    const TRIAL_ADULT_TYPES = ['free trial', 'free trial advanced', 'free trial women'];
+    const TRIAL_U18_TYPES = ['trial week kids'];
+
+    function getSubType(row) {
+        return (row['subscription'] || row['Subscription'] || '').toString().toLowerCase().trim();
     }
 
     let gribNieuw = null;
+    let gribTrialsAdults = null;
+    let gribTrialsU18 = null;
     if (uploadState.gribNieuw) {
         const rows = uploadState.gribNieuw.type === 'xlsx' ? uploadState.gribNieuw.rows : csvToRows(uploadState.gribNieuw.text);
-        // Filter on startDate matching selected month AND real memberships only
-        const filtered = rows.filter(row => {
+        // Filter by month first
+        const monthRows = rows.filter(row => {
             const d = row['startDate'] ?? row['startdate'] ?? row['StartDate'] ?? '';
-            return toYM(d) === ym && isRealMembership(row);
+            return toYM(d) === ym;
         });
-        // DEBUG: store subscription types being counted
+        // Split into categories
+        const realMembers = monthRows.filter(r => REAL_MEMBERSHIP_TYPES.includes(getSubType(r)));
+        const trialsAdult = monthRows.filter(r => TRIAL_ADULT_TYPES.includes(getSubType(r)));
+        const trialsU18 = monthRows.filter(r => TRIAL_U18_TYPES.includes(getSubType(r)));
+
+        gribNieuw = { new_members: realMembers.length, new_members_excel: realMembers.length };
+        gribTrialsAdults = trialsAdult.length;
+        gribTrialsU18 = trialsU18.length;
+
+        // DEBUG
         const debugNieuw = {};
-        filtered.forEach(r => { const s = r['subscription'] || '?'; debugNieuw[s] = (debugNieuw[s] || 0) + 1; });
-        window._debugGribNieuw = { month: ym, total: filtered.length, types: debugNieuw };
-        gribNieuw = { new_members: filtered.length, new_members_excel: filtered.length };
+        monthRows.forEach(r => { const s = r['subscription'] || '?'; debugNieuw[s] = (debugNieuw[s] || 0) + 1; });
+        window._debugGribNieuw = { month: ym, realMembers: realMembers.length, trialsAdults: trialsAdult.length, trialsU18: trialsU18.length, allTypes: debugNieuw };
     }
 
     let gribVerloren = null;
@@ -2483,15 +2500,13 @@ function renderUploadPreview(ym) {
     function readInt(id) { const v = document.getElementById(id)?.value; return v !== '' && v != null ? parseInt(v, 10) : null; }
     function readFloat(id) { const v = document.getElementById(id)?.value; return v !== '' && v != null ? parseFloat(v) : null; }
 
-    const trialsAdults = readInt('inputTrialsAdults');
-    const trialsU18 = readInt('inputTrialsU18');
     const zettle = readFloat('inputZettle');
     const sessions = readInt('inputSessions');
     const participants = readInt('inputParticipants');
 
     // Build the entry
     const totalMembers = gribLeden?.total_members || null;
-    const trials = trialsAdults;
+    const trials = (gribTrialsAdults || 0) + (gribTrialsU18 || 0) || null;
     const lost = gribVerloren?.lost || null;
     const newMembers = gribNieuw?.new_members || null;
     const newMembersExcel = gribNieuw?.new_members_excel || null;
@@ -2517,7 +2532,7 @@ function renderUploadPreview(ym) {
         ym,
         total_members: totalMembers,
         trials,
-        trials_u18: trialsU18,
+        trials_u18: gribTrialsU18 || null,
         lost,
         new_members_excel: newMembersExcel,
         trial_to_member: trialToMember,
