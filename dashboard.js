@@ -4318,6 +4318,59 @@ function roosterGetMonthDates(daysOfWeek) {
     return dates;
 }
 
+// Build full calendar weeks with fixed columns per day-of-week.
+// Each week is an array of {date, dow} where date is null if outside the month.
+// daysOfWeek is sorted as columns should appear (e.g. [1,2,3,4,5,6] for Mon-Sat).
+function roosterGetFullWeeks(daysOfWeek) {
+    if (!roosterState.month || !roosterState.year) return [];
+    const year = roosterState.year;
+    const month = roosterState.month; // 1-based
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Sort daysOfWeek in Mon-first order: 1,2,3,4,5,6,0
+    const sortOrder = [1, 2, 3, 4, 5, 6, 0];
+    const sortedDows = [...daysOfWeek].sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
+
+    // Find all calendar weeks that overlap with this month
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month - 1, daysInMonth);
+
+    // Get Monday of the week containing the 1st
+    const firstMonday = new Date(firstDay);
+    const dow1 = firstDay.getDay();
+    firstMonday.setDate(firstDay.getDate() - ((dow1 + 6) % 7));
+
+    // Get Monday of the week containing the last day
+    const lastMonday = new Date(lastDay);
+    const dowLast = lastDay.getDay();
+    lastMonday.setDate(lastDay.getDate() - ((dowLast + 6) % 7));
+
+    const weeks = [];
+    let monday = new Date(firstMonday);
+
+    while (monday <= lastMonday) {
+        const week = [];
+        for (const dow of sortedDows) {
+            // Calculate the date for this day-of-week in this week
+            const offset = (dow + 6) % 7; // Mon=0, Tue=1, ..., Sun=6
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + offset);
+
+            if (d.getMonth() === month - 1 && d.getFullYear() === year) {
+                week.push({ date: roosterDateStr(d), dow });
+            } else {
+                week.push({ date: null, dow });
+            }
+        }
+        // Only include week if at least one day is in the month
+        if (week.some(w => w.date !== null)) {
+            weeks.push(week);
+        }
+        monday.setDate(monday.getDate() + 7);
+    }
+    return weeks;
+}
+
 function roosterGroupByWeek(dates) {
     const weeks = [];
     let currentWeek = [];
@@ -4376,8 +4429,7 @@ function roosterRenderCoachGrid() {
     const wrap = document.getElementById('roosterCoachGrid');
     if (!roosterState.loaded) return;
 
-    const allDates = roosterGetMonthDates(ROOSTER_COACH_DAYS);
-    const weeks = roosterGroupByWeek(allDates);
+    const weeks = roosterGetFullWeeks(ROOSTER_COACH_DAYS);
 
     if (weeks.length === 0) {
         wrap.innerHTML = '<p class="rooster-empty">Geen data voor deze maand</p>';
@@ -4385,32 +4437,41 @@ function roosterRenderCoachGrid() {
     }
 
     let html = '';
-    weeks.forEach((weekDates, wi) => {
-        const firstDate = new Date(weekDates[0] + 'T00:00:00');
-        const lastDate = new Date(weekDates[weekDates.length - 1] + 'T00:00:00');
+    weeks.forEach((weekSlots, wi) => {
+        const activeDates = weekSlots.filter(s => s.date).map(s => s.date);
         const weekLabel = 'Week ' + (wi + 1);
-        const dateRange = roosterFormatDateShort(weekDates[0]) + ' - ' + roosterFormatDateShort(weekDates[weekDates.length - 1]);
+        const dateRange = activeDates.length > 0
+            ? roosterFormatDateShort(activeDates[0]) + ' - ' + roosterFormatDateShort(activeDates[activeDates.length - 1])
+            : '';
 
         html += `<div class="rooster-week-block">
             <div class="rooster-week-header"><span class="rooster-week-label">${weekLabel}</span><span class="rooster-week-range">${dateRange}</span></div>
             <div class="rooster-grid-wrap"><table class="rooster-table"><thead><tr><th class="rooster-th-slot">Slot</th>`;
 
-        for (const d of weekDates) {
-            html += `<th class="rooster-th-date"><div>${roosterGetDayName(d)}</div><div>${roosterFormatDateShort(d)}</div></th>`;
+        for (const s of weekSlots) {
+            if (s.date) {
+                html += `<th class="rooster-th-date"><div>${roosterGetDayName(s.date)}</div><div>${roosterFormatDateShort(s.date)}</div></th>`;
+            } else {
+                html += `<th class="rooster-th-date rooster-th-disabled"><div>${ROOSTER_DAYS_SHORT[s.dow]}</div><div>—</div></th>`;
+            }
         }
         html += '</tr></thead><tbody>';
 
         for (const slot of roosterState.coachSlots) {
             html += `<tr><td class="rooster-td-slot">${slot}</td>`;
-            for (const d of weekDates) {
-                const name = (roosterState.coaches[d] || {})[slot] || '';
-                const absent = name && roosterIsAbsent(name, d);
-                const empty = !name;
-                let cls = 'rooster-cell';
-                if (absent) cls += ' rooster-cell-absent';
-                else if (empty) cls += ' rooster-cell-empty';
-                else cls += ' rooster-cell-ok';
-                html += `<td class="${cls}" data-date="${d}" data-slot="${slot}" data-type="coach">${name || ''}</td>`;
+            for (const s of weekSlots) {
+                if (s.date) {
+                    const name = (roosterState.coaches[s.date] || {})[slot] || '';
+                    const absent = name && roosterIsAbsent(name, s.date);
+                    const empty = !name;
+                    let cls = 'rooster-cell';
+                    if (absent) cls += ' rooster-cell-absent';
+                    else if (empty) cls += ' rooster-cell-empty';
+                    else cls += ' rooster-cell-ok';
+                    html += `<td class="${cls}" data-date="${s.date}" data-slot="${slot}" data-type="coach">${name || ''}</td>`;
+                } else {
+                    html += `<td class="rooster-cell rooster-cell-disabled"></td>`;
+                }
             }
             html += '</tr>';
         }
@@ -4419,8 +4480,8 @@ function roosterRenderCoachGrid() {
 
     wrap.innerHTML = html;
 
-    // Bind click on cells
-    wrap.querySelectorAll('.rooster-cell').forEach(cell => {
+    // Bind click on cells (only active ones)
+    wrap.querySelectorAll('.rooster-cell:not(.rooster-cell-disabled)').forEach(cell => {
         cell.addEventListener('click', (e) => { e.stopPropagation(); roosterCellClick(cell); });
     });
 }
@@ -4430,8 +4491,7 @@ function roosterRenderBalieGrid() {
     const wrap = document.getElementById('roosterBalieGrid');
     if (!roosterState.loaded) return;
 
-    const allDates = roosterGetMonthDates(ROOSTER_BALIE_DAYS);
-    const weeks = roosterGroupByWeek(allDates);
+    const weeks = roosterGetFullWeeks(ROOSTER_BALIE_DAYS);
 
     if (weeks.length === 0) {
         wrap.innerHTML = '<p class="rooster-empty">Geen data voor deze maand</p>';
@@ -4439,28 +4499,39 @@ function roosterRenderBalieGrid() {
     }
 
     let html = '';
-    weeks.forEach((weekDates, wi) => {
+    weeks.forEach((weekSlots, wi) => {
+        const activeDates = weekSlots.filter(s => s.date).map(s => s.date);
         const weekLabel = 'Week ' + (wi + 1);
-        const dateRange = roosterFormatDateShort(weekDates[0]) + ' - ' + roosterFormatDateShort(weekDates[weekDates.length - 1]);
+        const dateRange = activeDates.length > 0
+            ? roosterFormatDateShort(activeDates[0]) + ' - ' + roosterFormatDateShort(activeDates[activeDates.length - 1])
+            : '';
 
         html += `<div class="rooster-week-block">
             <div class="rooster-week-header"><span class="rooster-week-label">${weekLabel}</span><span class="rooster-week-range">${dateRange}</span></div>
             <div class="rooster-grid-wrap"><table class="rooster-table"><thead><tr>`;
 
-        for (const d of weekDates) {
-            html += `<th class="rooster-th-date"><div>${roosterGetDayName(d)}</div><div>${roosterFormatDateShort(d)}</div></th>`;
+        for (const s of weekSlots) {
+            if (s.date) {
+                html += `<th class="rooster-th-date"><div>${roosterGetDayName(s.date)}</div><div>${roosterFormatDateShort(s.date)}</div></th>`;
+            } else {
+                html += `<th class="rooster-th-date rooster-th-disabled"><div>${ROOSTER_DAYS_SHORT[s.dow]}</div><div>—</div></th>`;
+            }
         }
         html += '</tr></thead><tbody><tr>';
 
-        for (const d of weekDates) {
-            const name = roosterState.balie[d] || '';
-            const absent = name && roosterIsAbsent(name, d);
-            const empty = !name;
-            let cls = 'rooster-cell';
-            if (absent) cls += ' rooster-cell-absent';
-            else if (empty) cls += ' rooster-cell-empty';
-            else cls += ' rooster-cell-ok';
-            html += `<td class="${cls}" data-date="${d}" data-type="balie">${name || ''}</td>`;
+        for (const s of weekSlots) {
+            if (s.date) {
+                const name = roosterState.balie[s.date] || '';
+                const absent = name && roosterIsAbsent(name, s.date);
+                const empty = !name;
+                let cls = 'rooster-cell';
+                if (absent) cls += ' rooster-cell-absent';
+                else if (empty) cls += ' rooster-cell-empty';
+                else cls += ' rooster-cell-ok';
+                html += `<td class="${cls}" data-date="${s.date}" data-type="balie">${name || ''}</td>`;
+            } else {
+                html += `<td class="rooster-cell rooster-cell-disabled"></td>`;
+            }
         }
 
         html += '</tr></tbody></table></div></div>';
@@ -4468,7 +4539,7 @@ function roosterRenderBalieGrid() {
 
     wrap.innerHTML = html;
 
-    wrap.querySelectorAll('.rooster-cell').forEach(cell => {
+    wrap.querySelectorAll('.rooster-cell:not(.rooster-cell-disabled)').forEach(cell => {
         cell.addEventListener('click', (e) => { e.stopPropagation(); roosterCellClick(cell); });
     });
 
