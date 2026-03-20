@@ -35,7 +35,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=13">
+    <link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -71,6 +71,10 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
             <li><a href="#" class="nav-link" data-page="nieuwsbrief">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 Crew Briefing
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="mailnewsletter">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                Newsletter
             </a></li>
             <li><a href="#" class="nav-link" data-page="uploads">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -649,6 +653,177 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         </div><!-- /pageNieuwsbrief -->
 
+        <!-- === PAGE: Newsletter (Mailchimp) === -->
+        <div class="page" id="pageMailnewsletter">
+
+            <!-- Progress Steps -->
+            <div class="nl-steps">
+                <div class="nl-step active" data-step="1"><span class="nl-step-num">1</span><span class="nl-step-label">Ophalen</span></div>
+                <div class="nl-step-line"></div>
+                <div class="nl-step" data-step="2"><span class="nl-step-num">2</span><span class="nl-step-label">Bewerken</span></div>
+                <div class="nl-step-line"></div>
+                <div class="nl-step" data-step="3"><span class="nl-step-num">3</span><span class="nl-step-label">Details</span></div>
+                <div class="nl-step-line"></div>
+                <div class="nl-step" data-step="4"><span class="nl-step-num">4</span><span class="nl-step-label">Publiceren</span></div>
+            </div>
+
+            <!-- Step 1: Fetch -->
+            <div class="nl-panel" id="nlStep1">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">📬 Laatste nieuwsbrief ophalen</h2></div>
+                    <div class="card-body">
+                        <p style="color:var(--text-secondary);margin-bottom:20px;">Klik op de knop om de laatste NL nieuwsbrief van Mailchimp op te halen als basis voor de nieuwe editie.</p>
+                        <div id="nlFetchInfo" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg);border-radius:8px;">
+                            <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px;">
+                                <span style="color:var(--text-secondary);font-weight:500;">Laatste:</span><span id="nlLastTitle"></span>
+                                <span style="color:var(--text-secondary);font-weight:500;">Onderwerp:</span><span id="nlLastSubject"></span>
+                                <span style="color:var(--text-secondary);font-weight:500;">Verzonden:</span><span id="nlLastDate"></span>
+                                <span style="color:var(--text-secondary);font-weight:500;">Volgende:</span><span id="nlNextNumber" style="font-weight:700;color:var(--accent);"></span>
+                            </div>
+                        </div>
+                        <button class="btn-primary" id="nlFetchBtn" style="padding:12px 32px;font-size:15px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Ophalen van Mailchimp
+                        </button>
+                        <div id="nlFetchLoading" style="display:none;margin-top:16px;color:var(--text-secondary);">
+                            <div class="nb-spinner" style="display:inline-block;width:20px;height:20px;margin-right:8px;vertical-align:middle;"></div>
+                            Ophalen...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Visual Edit -->
+            <div class="nl-panel" id="nlStep2" style="display:none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">✏️ Nieuwsbrief bewerken</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button class="btn-secondary" id="nlToggleCode" style="font-size:12px;padding:4px 12px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                                HTML
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Visual editor toolbar -->
+                    <div class="nl-toolbar">
+                        <span style="font-size:12px;color:var(--text-muted);margin-right:auto;">Klik op tekst om te bewerken · Selecteer een afbeelding voor opties</span>
+                        <button class="nl-toolbar-btn" id="nlUploadBtn" title="Afbeelding uploaden of vervangen">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            Afbeelding
+                        </button>
+                        <button class="nl-toolbar-btn" id="nlLinkBtn" title="Link toevoegen aan geselecteerde afbeelding">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Link
+                        </button>
+                        <button class="nl-toolbar-btn" id="nlUndo" title="Ongedaan maken">↩️</button>
+                        <button class="nl-toolbar-btn" id="nlRedo" title="Opnieuw">↪️</button>
+                        <input type="file" id="nlFileInput" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+                    </div>
+                    <!-- Upload progress -->
+                    <div class="nl-upload-bar" id="nlUploadBar" style="display:none;">
+                        <div class="nb-spinner" style="display:inline-block;width:16px;height:16px;margin-right:8px;vertical-align:middle;"></div>
+                        <span id="nlUploadStatus">Uploaden naar Mailchimp...</span>
+                    </div>
+                    <!-- Visual WYSIWYG editor -->
+                    <div class="card-body" style="padding:0;position:relative;">
+                        <iframe id="nlVisualEditor" class="nl-visual-editor"></iframe>
+                        <!-- Hidden HTML editor -->
+                        <textarea id="nlEditor" class="nl-editor nl-code-hidden" spellcheck="false"></textarea>
+                    </div>
+                    <div class="card-footer" style="display:flex;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--border);">
+                        <button class="btn-secondary" id="nlBackTo1">← Terug</button>
+                        <button class="btn-primary" id="nlToStep3">Volgende →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Details -->
+            <div class="nl-panel" id="nlStep3" style="display:none;">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">📋 Nieuwsbrief details</h2></div>
+                    <div class="card-body">
+                        <div class="nl-form">
+                            <div class="nl-form-group">
+                                <label for="nlNumber">Nummer</label>
+                                <input type="number" id="nlNumber" class="nl-input" placeholder="bijv. 161">
+                            </div>
+                            <div class="nl-form-group">
+                                <label for="nlSubjectNL">Onderwerp (NL)</label>
+                                <input type="text" id="nlSubjectNL" class="nl-input" placeholder="bijv. Training Tips + Wedstrijdresultaten">
+                            </div>
+                            <div class="nl-form-group">
+                                <label for="nlSubjectEN">Onderwerp (EN)</label>
+                                <input type="text" id="nlSubjectEN" class="nl-input" placeholder="bijv. Training Tips + Competition Results">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer" style="display:flex;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--border);">
+                        <button class="btn-secondary" id="nlBackTo2">← Terug</button>
+                        <button class="btn-primary" id="nlToStep4" style="padding:12px 32px;font-size:15px;">🚀 Publiceren</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Publishing -->
+            <div class="nl-panel" id="nlStep4" style="display:none;">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">🚀 Publiceren</h2></div>
+                    <div class="card-body">
+                        <!-- Overall progress bar -->
+                        <div class="nl-overall-progress" id="nlOverallProgress">
+                            <div class="nl-overall-bar">
+                                <div class="nl-overall-fill" id="nlOverallFill"></div>
+                            </div>
+                            <div class="nl-overall-text" id="nlOverallText">Stap 1 van 3...</div>
+                            <div class="nl-overall-timer" id="nlOverallTimer">0:00</div>
+                        </div>
+
+                        <div class="nl-progress-list">
+                            <div class="nl-progress-item" id="nlProg1">
+                                <div class="nl-progress-icon">⏳</div>
+                                <div style="flex:1;">
+                                    <div class="nl-progress-title">Spelling & grammatica controleren</div>
+                                    <div class="nl-progress-sub" id="nlProg1Sub">Wachten...</div>
+                                    <div class="nl-item-bar" id="nlProg1Bar" style="display:none;"><div class="nl-item-bar-fill"></div></div>
+                                </div>
+                            </div>
+                            <div class="nl-progress-item" id="nlProg2">
+                                <div class="nl-progress-icon">⏳</div>
+                                <div style="flex:1;">
+                                    <div class="nl-progress-title">Vertalen naar Engels</div>
+                                    <div class="nl-progress-sub" id="nlProg2Sub">Wachten...</div>
+                                    <div class="nl-item-bar" id="nlProg2Bar" style="display:none;"><div class="nl-item-bar-fill"></div></div>
+                                </div>
+                            </div>
+                            <div class="nl-progress-item" id="nlProg3">
+                                <div class="nl-progress-icon">⏳</div>
+                                <div style="flex:1;">
+                                    <div class="nl-progress-title">Campagnes aanmaken in Mailchimp</div>
+                                    <div class="nl-progress-sub" id="nlProg3Sub">Wachten...</div>
+                                    <div class="nl-item-bar" id="nlProg3Bar" style="display:none;"><div class="nl-item-bar-fill"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="nlSuccess" style="display:none;margin-top:24px;padding:24px;background:var(--green-light);border-radius:12px;text-align:center;">
+                            <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+                            <h3 style="margin-bottom:16px;color:var(--text);">Nieuwsbrief staat klaar!</h3>
+                            <p style="color:var(--text-secondary);margin-bottom:20px;">Controleer de campagnes in Mailchimp en druk op verzenden.</p>
+                            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                                <a id="nlLinkNL" href="#" target="_blank" class="btn-primary" style="padding:12px 24px;text-decoration:none;">🇳🇱 Open NL campagne</a>
+                                <a id="nlLinkEN" href="#" target="_blank" class="btn-primary" style="padding:12px 24px;text-decoration:none;background:var(--blue);">🇬🇧 Open EN campagne</a>
+                            </div>
+                            <button class="btn-secondary" id="nlRestart" style="margin-top:16px;">↩️ Nieuwe nieuwsbrief</button>
+                        </div>
+
+                        <div id="nlError" style="display:none;margin-top:16px;padding:16px;background:var(--red-light);border-radius:8px;color:var(--red);"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /pageMailnewsletter -->
+
         <!-- === PAGE: Simulator === -->
         <!-- === PAGE: Uploads === -->
         <div class="page" id="pageUploads">
@@ -1196,6 +1371,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         PAGES: <?= json_encode(NOTION_PAGES) ?>
     };
     </script>
-    <script src="dashboard.js?v=13"></script>
+    <script src="dashboard.js?v=20"></script>
 </body>
 </html>

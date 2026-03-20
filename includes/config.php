@@ -37,3 +37,8 @@ define('GYM_NAME', 'Haven BJJ');
 
 // Data directory (relative to this file's parent directory)
 define('DATA_DIR', __DIR__ . '/../data/');
+
+// API keys & secrets (not in git)
+if (file_exists(__DIR__ . '/secrets.php')) {
+    require_once __DIR__ . '/secrets.php';
+}

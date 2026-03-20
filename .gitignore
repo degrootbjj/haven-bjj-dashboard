@@ -14,5 +14,8 @@ data/avatars/
 # OS
 .DS_Store
 
+# Secrets (API keys, not in repo)
+includes/secrets.php
+
 # Claude Code
 .claude/

@@ -41,7 +41,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', uploads: 'Uploads', simulator: 'Prijssimulator', gyminfo: 'Gym Info', account: 'Account' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', lessen: 'Lessen', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', mailnewsletter: 'Newsletter', uploads: 'Uploads', simulator: 'Prijssimulator', gyminfo: 'Gym Info', account: 'Account' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -2975,4 +2975,447 @@ document.querySelectorAll('.theme-option').forEach(btn => {
             console.error('Theme save error:', err);
         }
     });
+});
+
+// ============================================
+// Newsletter (Mailchimp) Page
+// ============================================
+
+let nlCurrentHtml = '';
+let nlNextNumber = null;
+
+function nlGoToStep(step) {
+    document.querySelectorAll('.nl-panel').forEach(p => p.style.display = 'none');
+    const stepEl = document.getElementById('nlStep' + step);
+    if (stepEl) stepEl.style.display = '';
+    document.querySelectorAll('.nl-step').forEach(s => {
+        const sNum = parseInt(s.dataset.step);
+        s.classList.toggle('active', sNum === step);
+        s.classList.toggle('done', sNum < step);
+    });
+}
+
+// Step 1: Fetch
+document.getElementById('nlFetchBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('nlFetchBtn');
+    const loading = document.getElementById('nlFetchLoading');
+    btn.disabled = true;
+    loading.style.display = 'block';
+
+    try {
+        const resp = await fetch('api/newsletter.php?action=fetch');
+        if (!resp.ok) { const e = await resp.json(); throw new Error(e.error || 'Fetch mislukt'); }
+        const data = await resp.json();
+
+        document.getElementById('nlLastTitle').textContent = data.title;
+        document.getElementById('nlLastSubject').textContent = data.subject_line;
+        document.getElementById('nlLastDate').textContent = data.send_time;
+        document.getElementById('nlNextNumber').textContent = '#' + data.next_number;
+        document.getElementById('nlFetchInfo').style.display = 'block';
+
+        nlCurrentHtml = data.html;
+        nlNextNumber = data.next_number;
+        document.getElementById('nlNumber').value = data.next_number;
+        document.getElementById('nlEditor').value = data.html;
+
+        setTimeout(() => {
+            nlGoToStep(2);
+            nlLoadVisualEditor(data.html);
+        }, 600);
+    } catch (err) {
+        alert('Fout: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        loading.style.display = 'none';
+    }
+});
+
+// Step 2: Visual WYSIWYG editor
+let nlCodeVisible = false;
+
+function nlLoadVisualEditor(html) {
+    const iframe = document.getElementById('nlVisualEditor');
+    if (!iframe) return;
+
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+        const doc = iframe.contentDocument;
+        // Enable editing
+        doc.designMode = 'on';
+
+        // Click on image to select it — show info in toolbar hint
+        doc.addEventListener('click', (e) => {
+            // Deselect previous
+            doc.querySelectorAll('img').forEach(img => img.style.outline = '');
+            nlSelectedImg = null;
+
+            // Update toolbar buttons state
+            const linkBtn = document.getElementById('nlLinkBtn');
+
+            if (e.target.tagName === 'IMG') {
+                e.target.style.outline = '3px solid #6366f1';
+                nlSelectedImg = e.target;
+
+                // Show link status
+                const parentLink = e.target.closest('a');
+                if (linkBtn) {
+                    if (parentLink) {
+                        linkBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Link ✓';
+                        linkBtn.style.borderColor = '#6366f1';
+                        linkBtn.style.color = '#6366f1';
+                    } else {
+                        linkBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Link';
+                        linkBtn.style.borderColor = '';
+                        linkBtn.style.color = '';
+                    }
+                }
+                e.preventDefault();
+            } else {
+                // Reset link button
+                if (linkBtn) {
+                    linkBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Link';
+                    linkBtn.style.borderColor = '';
+                    linkBtn.style.color = '';
+                }
+            }
+        });
+
+        // Double-click image to upload replacement directly
+        doc.addEventListener('dblclick', (e) => {
+            if (e.target.tagName === 'IMG') {
+                e.target.style.outline = '3px solid #6366f1';
+                nlSelectedImg = e.target;
+                document.getElementById('nlFileInput').click();
+            }
+        });
+
+        // Add hover effect on images
+        const style = doc.createElement('style');
+        style.textContent = `
+            img:hover { outline: 2px dashed #6366f1; outline-offset: 2px; cursor: pointer; }
+            img { transition: outline 0.15s; }
+        `;
+        doc.head.appendChild(style);
+    };
+}
+
+function nlGetVisualHtml() {
+    const iframe = document.getElementById('nlVisualEditor');
+    if (!iframe || !iframe.contentDocument) return document.getElementById('nlEditor').value;
+    const doc = iframe.contentDocument;
+    // Remove editor styles before extracting
+    const editorStyles = doc.querySelectorAll('style');
+    editorStyles.forEach(s => { if (s.textContent.includes('dashed #6366f1')) s.remove(); });
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+}
+
+// Toggle code view
+document.getElementById('nlToggleCode')?.addEventListener('click', () => {
+    const editor = document.getElementById('nlEditor');
+    const visual = document.getElementById('nlVisualEditor');
+    nlCodeVisible = !nlCodeVisible;
+
+    if (nlCodeVisible) {
+        // Sync visual → code
+        editor.value = nlGetVisualHtml();
+        editor.classList.remove('nl-code-hidden');
+        editor.classList.add('nl-code-visible');
+        visual.style.display = 'none';
+        document.getElementById('nlToggleCode').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Visueel';
+    } else {
+        // Sync code → visual
+        nlLoadVisualEditor(editor.value);
+        editor.classList.add('nl-code-hidden');
+        editor.classList.remove('nl-code-visible');
+        visual.style.display = 'block';
+        document.getElementById('nlToggleCode').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> HTML';
+    }
+});
+
+// Image upload
+let nlSelectedImg = null;
+
+document.getElementById('nlUploadBtn')?.addEventListener('click', () => {
+    document.getElementById('nlFileInput').click();
+});
+
+document.getElementById('nlFileInput')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const bar = document.getElementById('nlUploadBar');
+    const status = document.getElementById('nlUploadStatus');
+    bar.style.display = 'block';
+    status.textContent = `"${file.name}" uploaden naar Mailchimp...`;
+
+    try {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const resp = await fetch('api/newsletter.php?action=upload', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken },
+            body: formData
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.error || 'Upload mislukt');
+        }
+
+        const data = await resp.json();
+        status.textContent = '✅ Geüpload!';
+
+        const doc = document.getElementById('nlVisualEditor')?.contentDocument;
+        if (doc) {
+            if (nlSelectedImg) {
+                // Replace selected image
+                nlSelectedImg.src = data.url;
+                nlSelectedImg = null;
+            } else {
+                // Insert at cursor position
+                doc.execCommand('insertImage', false, data.url);
+            }
+        }
+
+        setTimeout(() => { bar.style.display = 'none'; }, 2000);
+    } catch (err) {
+        status.textContent = '❌ ' + err.message;
+        setTimeout(() => { bar.style.display = 'none'; }, 4000);
+    }
+
+    // Reset file input
+    e.target.value = '';
+});
+
+// Link button — add/edit/remove link on selected image
+document.getElementById('nlLinkBtn')?.addEventListener('click', () => {
+    const doc = document.getElementById('nlVisualEditor')?.contentDocument;
+    if (!doc) return;
+
+    if (!nlSelectedImg) {
+        alert('Selecteer eerst een afbeelding door erop te klikken.');
+        return;
+    }
+
+    // Check if image already has a link (parent <a>)
+    const parentLink = nlSelectedImg.closest('a');
+    const currentUrl = parentLink ? parentLink.href : '';
+
+    const newUrl = prompt(
+        currentUrl ? 'Link bewerken (leeg laten om te verwijderen):' : 'Link URL toevoegen:',
+        currentUrl
+    );
+
+    // User cancelled
+    if (newUrl === null) return;
+
+    let url = newUrl.trim();
+
+    if (url === '') {
+        // Remove link — unwrap image from <a> tag
+        if (parentLink) {
+            parentLink.replaceWith(nlSelectedImg);
+        }
+    } else {
+        // Auto-add https:// if no protocol specified
+        if (url && !url.match(/^https?:\/\//i) && !url.startsWith('mailto:')) {
+            url = 'https://' + url;
+        }
+
+        if (parentLink) {
+            parentLink.href = url;
+            parentLink.setAttribute('target', '_blank');
+        } else {
+            const link = doc.createElement('a');
+            link.href = url;
+            link.setAttribute('target', '_blank');
+            nlSelectedImg.parentNode.insertBefore(link, nlSelectedImg);
+            link.appendChild(nlSelectedImg);
+        }
+    }
+});
+
+// Undo/Redo in visual editor
+document.getElementById('nlUndo')?.addEventListener('click', () => {
+    const doc = document.getElementById('nlVisualEditor')?.contentDocument;
+    if (doc) doc.execCommand('undo');
+});
+document.getElementById('nlRedo')?.addEventListener('click', () => {
+    const doc = document.getElementById('nlVisualEditor')?.contentDocument;
+    if (doc) doc.execCommand('redo');
+});
+
+// Navigation
+document.getElementById('nlBackTo1')?.addEventListener('click', () => nlGoToStep(1));
+document.getElementById('nlToStep3')?.addEventListener('click', () => {
+    // Get HTML from whichever editor is active
+    nlCurrentHtml = nlCodeVisible
+        ? document.getElementById('nlEditor').value
+        : nlGetVisualHtml();
+    nlGoToStep(3);
+});
+document.getElementById('nlBackTo2')?.addEventListener('click', () => nlGoToStep(2));
+
+// Step 4: Publish with progress tracking
+let nlTimer = null;
+let nlStartTime = 0;
+
+function nlStartTimer() {
+    nlStartTime = Date.now();
+    const timerEl = document.getElementById('nlOverallTimer');
+    nlTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - nlStartTime) / 1000);
+        const min = Math.floor(elapsed / 60);
+        const sec = String(elapsed % 60).padStart(2, '0');
+        if (timerEl) timerEl.textContent = min + ':' + sec;
+    }, 1000);
+}
+
+function nlStopTimer() {
+    if (nlTimer) { clearInterval(nlTimer); nlTimer = null; }
+}
+
+function nlSetOverall(pct, text) {
+    const fill = document.getElementById('nlOverallFill');
+    const txt = document.getElementById('nlOverallText');
+    if (fill) fill.style.width = pct + '%';
+    if (txt) txt.textContent = text;
+}
+
+function nlSetStep(id, icon, sub, active) {
+    const item = document.getElementById(id);
+    const iconEl = item?.querySelector('.nl-progress-icon');
+    const subEl = document.getElementById(id + 'Sub');
+    const bar = document.getElementById(id + 'Bar');
+    if (iconEl) iconEl.textContent = icon;
+    if (subEl) subEl.textContent = sub;
+    if (item) item.classList.toggle('active', !!active);
+    if (bar) bar.style.display = active ? '' : 'none';
+}
+
+document.getElementById('nlToStep4')?.addEventListener('click', async () => {
+    const number = document.getElementById('nlNumber').value;
+    const subjectNL = document.getElementById('nlSubjectNL').value.trim();
+    const subjectEN = document.getElementById('nlSubjectEN').value.trim();
+
+    if (!number || !subjectNL || !subjectEN) {
+        alert('Vul alle velden in!');
+        return;
+    }
+
+    nlGoToStep(4);
+    const errorEl = document.getElementById('nlError');
+    errorEl.style.display = 'none';
+    document.getElementById('nlOverallProgress').style.display = '';
+    nlStartTimer();
+
+    try {
+        // Stap 1: Spellcheck
+        nlSetOverall(5, 'Stap 1 van 3 — Spelling controleren...');
+        nlSetStep('nlProg1', '🔄', 'Claude controleert spelling & grammatica... (±30 sec)', true);
+
+        const spellResp = await fetch('api/newsletter.php?action=spellcheck', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ html: nlCurrentHtml })
+        });
+        if (!spellResp.ok) {
+            let errMsg = 'Spellcheck mislukt';
+            try { const e = await spellResp.json(); errMsg = e.error || errMsg; } catch(x) {}
+            throw new Error(errMsg);
+        }
+        const spellData = await spellResp.json();
+        const htmlNlChecked = spellData.html;
+        const corCount = spellData.corrections || 0;
+        nlSetStep('nlProg1', '✅', corCount > 0 ? corCount + ' correctie(s) toegepast' : 'Geen fouten gevonden!', false);
+        nlSetOverall(33, 'Stap 2 van 3 — Vertalen...');
+
+        // Stap 2: Translate
+        nlSetStep('nlProg2', '🔄', 'Claude vertaalt naar Engels... (±45 sec)', true);
+
+        const transResp = await fetch('api/newsletter.php?action=translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ html: htmlNlChecked })
+        });
+        if (!transResp.ok) {
+            let errMsg = 'Vertaling mislukt';
+            try { const e = await transResp.json(); errMsg = e.error || errMsg; } catch(x) {}
+            throw new Error(errMsg);
+        }
+        const transData = await transResp.json();
+        const htmlEn = transData.html;
+        nlSetStep('nlProg2', '✅', 'Klaar!', false);
+        nlSetOverall(66, 'Stap 3 van 3 — Campagnes aanmaken...');
+
+        // Stap 3: Create campaigns
+        nlSetStep('nlProg3', '🔄', 'Campagnes aanmaken in Mailchimp... (±10 sec)', true);
+
+        const createResp = await fetch('api/newsletter.php?action=create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({
+                number: parseInt(number),
+                subject_nl: subjectNL,
+                subject_en: subjectEN,
+                html_nl: htmlNlChecked,
+                html_en: htmlEn
+            })
+        });
+        if (!createResp.ok) {
+            let errMsg = 'Campagne aanmaken mislukt';
+            try { const e = await createResp.json(); errMsg = e.error || errMsg; } catch(x) {}
+            throw new Error(errMsg);
+        }
+        const createData = await createResp.json();
+        nlSetStep('nlProg3', '✅', 'Klaar!', false);
+        nlSetOverall(100, 'Alles klaar!');
+        nlStopTimer();
+
+        // Show success
+        document.getElementById('nlLinkNL').href = createData.nl_url;
+        document.getElementById('nlLinkEN').href = createData.en_url;
+        document.getElementById('nlSuccess').style.display = '';
+
+    } catch (err) {
+        nlStopTimer();
+        // Mark current active step as failed
+        document.querySelectorAll('.nl-progress-item.active').forEach(item => {
+            const icon = item.querySelector('.nl-progress-icon');
+            if (icon) icon.textContent = '❌';
+            item.classList.remove('active');
+            const bar = item.querySelector('.nl-item-bar');
+            if (bar) bar.style.display = 'none';
+        });
+        nlSetOverall(0, 'Mislukt');
+        errorEl.textContent = '❌ Fout: ' + err.message;
+        errorEl.style.display = '';
+    }
+});
+
+// Restart
+document.getElementById('nlRestart')?.addEventListener('click', () => {
+    nlCurrentHtml = '';
+    nlCodeVisible = false;
+    document.getElementById('nlEditor').value = '';
+    document.getElementById('nlEditor').classList.add('nl-code-hidden');
+    document.getElementById('nlEditor').classList.remove('nl-code-visible');
+    const vis = document.getElementById('nlVisualEditor');
+    if (vis) { vis.style.display = 'block'; vis.srcdoc = ''; }
+    document.getElementById('nlNumber').value = '';
+    document.getElementById('nlSubjectNL').value = '';
+    document.getElementById('nlSubjectEN').value = '';
+    document.getElementById('nlFetchInfo').style.display = 'none';
+    document.getElementById('nlSuccess').style.display = 'none';
+    document.getElementById('nlError').style.display = 'none';
+    nlStopTimer();
+    ['nlProg1', 'nlProg2', 'nlProg3'].forEach(id => {
+        nlSetStep(id, '⏳', 'Wachten...', false);
+    });
+    const fill = document.getElementById('nlOverallFill');
+    if (fill) fill.style.width = '0%';
+    const timer = document.getElementById('nlOverallTimer');
+    if (timer) timer.textContent = '0:00';
+    nlGoToStep(1);
 });
