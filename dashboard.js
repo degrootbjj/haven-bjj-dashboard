@@ -2508,7 +2508,7 @@ function renderUploadPreview(ym) {
 
     // Build the entry
     const totalMembers = gribLeden?.total_members || null;
-    const trials = (gribTrialsAdults || 0) + (gribTrialsU18 || 0) || null;
+    const trials = gribTrialsAdults || null;
     const lost = gribVerloren?.lost || null;
     const newMembers = gribNieuw?.new_members || null;
     const newMembersExcel = gribNieuw?.new_members_excel || null;
