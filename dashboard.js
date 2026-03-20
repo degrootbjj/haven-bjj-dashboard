@@ -4867,6 +4867,101 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
         return div;
     }
 
+    // Map Dutch weekday names to JS day numbers (0=Sun, 1=Mon, ...)
+    const WEEKDAY_MAP = {
+        'maandag': 1, 'dinsdag': 2, 'woensdag': 3, 'donderdag': 4,
+        'vrijdag': 5, 'zaterdag': 6, 'zondag': 0
+    };
+
+    // Get all dates in the month for a given day-of-week
+    function getDatesForWeekday(dow) {
+        if (!roosterState.month || !roosterState.year) return [];
+        const dates = [];
+        const daysInMonth = new Date(roosterState.year, roosterState.month, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dt = new Date(roosterState.year, roosterState.month - 1, d);
+            if (dt.getDay() === dow) {
+                dates.push(roosterDateStr(dt));
+            }
+        }
+        return dates;
+    }
+
+    // Get date string for a specific day number in the month
+    function getDateForDayNum(dayNum) {
+        if (!roosterState.month || !roosterState.year) return null;
+        const dt = new Date(roosterState.year, roosterState.month - 1, dayNum);
+        if (dt.getMonth() === roosterState.month - 1) return roosterDateStr(dt);
+        return null;
+    }
+
+    // Build a weekday summary of the current roster for context
+    function buildWeekdaySummary() {
+        const days = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+        let summary = '';
+        for (const day of days) {
+            const dow = WEEKDAY_MAP[day];
+            const sampleDates = getDatesForWeekday(dow);
+            if (sampleDates.length === 0) continue;
+            const sampleDate = sampleDates[0];
+            const slots = roosterState.coaches[sampleDate];
+            if (!slots) continue;
+            summary += day.charAt(0).toUpperCase() + day.slice(1) + ': ';
+            const parts = [];
+            for (const [slot, name] of Object.entries(slots)) {
+                if (name) parts.push(slot + '=' + name);
+            }
+            summary += parts.join(', ') + '\n';
+        }
+        // Balie
+        const balieDays = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zondag'];
+        summary += '\nBalie:\n';
+        for (const day of balieDays) {
+            const dow = WEEKDAY_MAP[day];
+            const sampleDates = getDatesForWeekday(dow);
+            if (sampleDates.length === 0) continue;
+            const name = roosterState.balie[sampleDates[0]];
+            if (name) summary += day.charAt(0).toUpperCase() + day.slice(1) + ': ' + name + '\n';
+        }
+        return summary;
+    }
+
+    // Apply AI changes (weekday-based) to actual dates
+    function applyAiChanges(changes) {
+        let count = 0;
+        for (const change of changes) {
+            let targetDates = [];
+
+            if (change.scope === 'specific' && change.dates) {
+                // Specific day numbers
+                for (const dayNum of change.dates) {
+                    const ds = getDateForDayNum(dayNum);
+                    if (ds) targetDates.push(ds);
+                }
+            } else {
+                // All matching weekdays in the month
+                for (const dayName of (change.days || [])) {
+                    const dow = WEEKDAY_MAP[dayName.toLowerCase()];
+                    if (dow !== undefined) {
+                        targetDates.push(...getDatesForWeekday(dow));
+                    }
+                }
+            }
+
+            for (const dateStr of targetDates) {
+                if (change.type === 'coaches' && change.slot) {
+                    if (!roosterState.coaches[dateStr]) roosterState.coaches[dateStr] = {};
+                    roosterState.coaches[dateStr][change.slot] = change.name || '';
+                    count++;
+                } else if (change.type === 'balie') {
+                    roosterState.balie[dateStr] = change.name || '';
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
     async function roosterChatSend() {
         const msg = roosterChatInput.value.trim();
         if (!msg || !roosterState.loaded) {
@@ -4890,7 +4985,8 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
                     slots: roosterState.coachSlots,
                     allCoaches: roosterState.allCoaches,
                     allBalie: roosterState.allBalie,
-                    history: chatHistory.slice(-10) // last 10 messages for context
+                    weekdaySummary: buildWeekdaySummary(),
+                    history: chatHistory.slice(-10)
                 })
             });
 
@@ -4907,37 +5003,17 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
                 return;
             }
 
-            // Track in history
             chatHistory.push({ role: 'user', content: msg });
 
-            // Apply changes
-            if (data.changes && (
-                (data.changes.coaches && Object.keys(data.changes.coaches).length > 0) ||
-                (data.changes.balie && Object.keys(data.changes.balie).length > 0)
-            )) {
-                let changeCount = 0;
-                if (data.changes.coaches) {
-                    for (const [date, slots] of Object.entries(data.changes.coaches)) {
-                        if (!roosterState.coaches[date]) roosterState.coaches[date] = {};
-                        for (const [slot, name] of Object.entries(slots)) {
-                            roosterState.coaches[date][slot] = name;
-                            changeCount++;
-                        }
-                    }
-                }
-                if (data.changes.balie) {
-                    for (const [date, name] of Object.entries(data.changes.balie)) {
-                        roosterState.balie[date] = name;
-                        changeCount++;
-                    }
-                }
+            if (data.changes && data.changes.length > 0) {
+                const changeCount = applyAiChanges(data.changes);
 
                 roosterRenderAll();
                 roosterScheduleAutoSave();
 
                 const aiMsg = data.message + '\n\n✅ ' + changeCount + ' cel(len) aangepast.';
                 roosterChatAddMsg(aiMsg, 'ai');
-                chatHistory.push({ role: 'assistant', content: JSON.stringify(data) });
+                chatHistory.push({ role: 'assistant', content: data.message });
             } else {
                 roosterChatAddMsg(data.message || 'Geen wijzigingen gemaakt.', 'ai');
                 chatHistory.push({ role: 'assistant', content: data.message });
