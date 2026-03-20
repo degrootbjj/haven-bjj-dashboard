@@ -1583,6 +1583,21 @@ body {
 .btn-primary:hover { opacity: 0.9; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.btn-secondary {
+    padding: 10px 20px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-secondary:hover { background: var(--bg); }
+
 /* Theme Toggle */
 .account-theme-section {
     display: flex;
@@ -1931,4 +1946,517 @@ body {
     .nl-step-label { display: none; }
     .nl-step-line { width: 20px; }
     .nl-editor { font-size: 11px; }
+}
+
+/* ============================================
+   Rooster Tool Styles
+   ============================================ */
+
+/* Wizard Steps */
+.rooster-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 24px;
+    padding: 16px 0;
+}
+
+.rooster-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: default;
+}
+
+.rooster-step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.rooster-step.active .rooster-step-num {
+    background: var(--accent);
+    color: #fff;
+}
+
+.rooster-step.done .rooster-step-num {
+    background: var(--green);
+    color: #fff;
+}
+
+.rooster-step-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.rooster-step.active .rooster-step-label {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.rooster-step.done .rooster-step-label {
+    color: var(--green);
+}
+
+.rooster-step-line {
+    width: 40px;
+    height: 2px;
+    background: var(--border);
+    margin: 0 8px;
+    transition: background 0.2s;
+}
+
+.rooster-step-line.done {
+    background: var(--green);
+}
+
+/* Month Selection */
+.rooster-month-select {
+    padding: 8px 0;
+}
+
+.rooster-input-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.rooster-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rooster-field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.rooster-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    min-width: 140px;
+}
+
+.rooster-field-btn {
+    justify-content: flex-end;
+}
+
+.rooster-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.rooster-error {
+    padding: 12px 16px;
+    background: var(--red-light);
+    color: var(--red);
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 12px;
+}
+
+/* Absence Form */
+.rooster-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 20px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.rooster-section-title:first-child {
+    margin-top: 8px;
+}
+
+.rooster-absence-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.rooster-absence-row:last-child {
+    border-bottom: none;
+}
+
+.rooster-absence-name {
+    min-width: 120px;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
+    padding-top: 8px;
+}
+
+.rooster-absence-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rooster-absence-input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.rooster-absence-input::placeholder {
+    color: var(--text-muted);
+}
+
+.rooster-absence-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.rooster-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    background: var(--red-light);
+    color: var(--red);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Navigation Buttons */
+.rooster-nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    gap: 12px;
+}
+
+.rooster-nav-buttons .btn-secondary,
+.rooster-nav-buttons .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Schedule Grid */
+.rooster-grid-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.rooster-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.rooster-table th,
+.rooster-table td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.rooster-table th {
+    background: var(--bg);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.rooster-th-slot {
+    text-align: left !important;
+    min-width: 100px;
+}
+
+.rooster-th-date div:first-child {
+    font-weight: 600;
+}
+
+.rooster-th-date div:last-child {
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.rooster-td-slot {
+    text-align: left !important;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--bg);
+}
+
+.rooster-cell {
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+}
+
+.rooster-cell:hover {
+    background: var(--accent-light);
+}
+
+.rooster-cell-ok {
+    color: var(--text);
+}
+
+.rooster-cell-absent {
+    background: var(--red-light) !important;
+    color: var(--red) !important;
+    font-weight: 600;
+}
+
+.rooster-cell-empty {
+    color: var(--text-muted);
+    background: rgba(234, 179, 8, 0.08);
+}
+
+.rooster-cell-replaced {
+    background: var(--green-light) !important;
+    color: var(--green) !important;
+    font-weight: 600;
+}
+
+.rooster-cell-absent.rooster-cell-replaced {
+    background: var(--green-light) !important;
+    color: var(--green) !important;
+}
+
+.rooster-empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 24px;
+    font-size: 14px;
+}
+
+/* Cell Edit Dropdown */
+.rooster-dropdown {
+    position: absolute;
+    z-index: 1000;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    min-width: 200px;
+    max-height: 300px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.rooster-dropdown-header {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rooster-dropdown-list {
+    overflow-y: auto;
+    max-height: 200px;
+}
+
+.rooster-dd-item {
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.1s;
+    color: var(--text);
+}
+
+.rooster-dd-item:hover {
+    background: var(--accent-light);
+}
+
+.rooster-dd-item.current {
+    background: var(--accent-light);
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.rooster-dd-item.absent {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.rooster-dd-absent-badge {
+    font-size: 10px;
+    background: var(--red-light);
+    color: var(--red);
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.rooster-dropdown-custom {
+    display: flex;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+}
+
+.rooster-dropdown-custom input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
+}
+
+.btn-sm {
+    padding: 4px 12px !important;
+    font-size: 12px !important;
+}
+
+/* Hours Table */
+.rooster-hours-wrap {
+    overflow-x: auto;
+}
+
+.rooster-hours-table .rooster-hours-total {
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+/* Preview */
+.rooster-preview-wrap {
+    padding: 8px 0;
+}
+
+.rooster-preview-inner {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.rooster-preview-inner h2 {
+    font-size: 18px;
+    color: var(--text);
+}
+
+.rooster-preview-inner h3 {
+    font-size: 15px;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.rooster-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.rooster-preview-table th,
+.rooster-preview-table td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: center;
+}
+
+.rooster-preview-table th {
+    background: var(--surface);
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.rooster-preview-table td:first-child {
+    text-align: left;
+    font-weight: 500;
+}
+
+/* Actions */
+.rooster-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.rooster-send-msg {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.rooster-send-success {
+    background: var(--green-light);
+    color: var(--green);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .rooster-steps {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .rooster-step-label {
+        display: none;
+    }
+    .rooster-step-line {
+        width: 20px;
+    }
+    .rooster-input-row {
+        flex-direction: column;
+    }
+    .rooster-select {
+        min-width: 100%;
+    }
+    .rooster-absence-row {
+        flex-direction: column;
+        gap: 6px;
+    }
+    .rooster-absence-name {
+        min-width: auto;
+        padding-top: 0;
+    }
+    .rooster-table {
+        font-size: 11px;
+    }
+    .rooster-table th,
+    .rooster-table td {
+        padding: 4px 6px;
+    }
 }

@@ -35,7 +35,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=23">
+    <link rel="stylesheet" href="styles.css?v=24">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -83,6 +83,10 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
             <li><a href="#" class="nav-link" data-page="simulator">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
                 Simulator
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="rooster">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="22"/><line x1="15" y1="4" x2="15" y2="22"/><line x1="3" y1="16" x2="21" y2="16"/></svg>
+                Rooster
             </a></li>
             <li><a href="#" class="nav-link" data-page="gyminfo">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -1340,6 +1344,197 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
             </div>
         </div><!-- /pageGyminfo -->
 
+        <!-- ═══ Rooster Tool ═══ -->
+        <div class="page" id="pageRooster">
+
+            <!-- Wizard Steps Indicator -->
+            <div class="rooster-steps">
+                <div class="rooster-step active" data-step="1">
+                    <div class="rooster-step-num">1</div>
+                    <span class="rooster-step-label">Maand</span>
+                </div>
+                <div class="rooster-step-line"></div>
+                <div class="rooster-step" data-step="2">
+                    <div class="rooster-step-num">2</div>
+                    <span class="rooster-step-label">Afwezigheid</span>
+                </div>
+                <div class="rooster-step-line"></div>
+                <div class="rooster-step" data-step="3">
+                    <div class="rooster-step-num">3</div>
+                    <span class="rooster-step-label">Schema</span>
+                </div>
+                <div class="rooster-step-line"></div>
+                <div class="rooster-step" data-step="4">
+                    <div class="rooster-step-num">4</div>
+                    <span class="rooster-step-label">Uren</span>
+                </div>
+                <div class="rooster-step-line"></div>
+                <div class="rooster-step" data-step="5">
+                    <div class="rooster-step-num">5</div>
+                    <span class="rooster-step-label">Verzenden</span>
+                </div>
+            </div>
+
+            <!-- Step 1: Month Selection -->
+            <div class="rooster-panel" id="roosterStep1">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Maand selecteren</h2>
+                    </div>
+                    <div class="rooster-month-select">
+                        <div class="rooster-input-row">
+                            <div class="rooster-field">
+                                <label>Maand</label>
+                                <select id="roosterMonth" class="rooster-select">
+                                    <option value="1">Januari</option>
+                                    <option value="2">Februari</option>
+                                    <option value="3">Maart</option>
+                                    <option value="4">April</option>
+                                    <option value="5">Mei</option>
+                                    <option value="6">Juni</option>
+                                    <option value="7">Juli</option>
+                                    <option value="8">Augustus</option>
+                                    <option value="9">September</option>
+                                    <option value="10">Oktober</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+                                </select>
+                            </div>
+                            <div class="rooster-field">
+                                <label>Jaar</label>
+                                <select id="roosterYear" class="rooster-select">
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+                            <div class="rooster-field rooster-field-btn">
+                                <button class="btn-primary" id="roosterLoadBtn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
+                                    Laden
+                                </button>
+                            </div>
+                        </div>
+                        <div class="rooster-loading" id="roosterLoading" style="display:none;">
+                            <div class="nb-spinner"></div>
+                            <span>Rooster ophalen uit Notion...</span>
+                        </div>
+                        <div class="rooster-error" id="roosterError" style="display:none;"></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Step 2: Absences -->
+            <div class="rooster-panel" id="roosterStep2" style="display:none;">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Afwezigheid invoeren</h2>
+                        <span class="card-subtitle">Voer per persoon afwezige dagen in (bijv. "3 en 7 maart" of "5, 12, 19")</span>
+                    </div>
+                    <div id="roosterAbsenceCoaches"></div>
+                    <div id="roosterAbsenceBalie"></div>
+                </section>
+                <div class="rooster-nav-buttons">
+                    <button class="btn-secondary" id="roosterBack2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Terug
+                    </button>
+                    <button class="btn-primary" id="roosterNext2">
+                        Volgende
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Schedule Review -->
+            <div class="rooster-panel" id="roosterStep3" style="display:none;">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Coaches Rooster</h2>
+                        <span class="card-subtitle" id="roosterCoachSubtitle"></span>
+                    </div>
+                    <div class="rooster-grid-wrap" id="roosterCoachGrid"></div>
+                </section>
+                <section class="card" style="margin-top:16px;">
+                    <div class="card-header">
+                        <h2 class="card-title">Balie Rooster</h2>
+                        <span class="card-subtitle" id="roosterBalieSubtitle"></span>
+                    </div>
+                    <div class="rooster-grid-wrap" id="roosterBalieGrid"></div>
+                </section>
+                <div class="rooster-nav-buttons">
+                    <button class="btn-secondary" id="roosterBack3">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Terug
+                    </button>
+                    <button class="btn-primary" id="roosterNext3">
+                        Volgende
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Hours Overview -->
+            <div class="rooster-panel" id="roosterStep4" style="display:none;">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Urentelling Balie</h2>
+                        <span class="card-subtitle">Overzicht uren per baliemedewerker</span>
+                    </div>
+                    <div class="rooster-hours-wrap" id="roosterHoursTable"></div>
+                </section>
+                <div class="rooster-nav-buttons">
+                    <button class="btn-secondary" id="roosterBack4">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Terug
+                    </button>
+                    <button class="btn-primary" id="roosterNext4">
+                        Volgende
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 5: Preview & Send -->
+            <div class="rooster-panel" id="roosterStep5" style="display:none;">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Preview & Verzenden</h2>
+                        <span class="card-subtitle">Controleer het rooster en kopieer of verstuur</span>
+                    </div>
+                    <div class="rooster-preview-wrap" id="roosterPreview"></div>
+                    <div class="rooster-actions">
+                        <button class="btn-primary" id="roosterCopyHtml">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            Kopieer HTML
+                        </button>
+                        <button class="btn-secondary" id="roosterSendNotion">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            Verzend naar Notion
+                        </button>
+                    </div>
+                    <div class="rooster-send-msg" id="roosterSendMsg" style="display:none;"></div>
+                </section>
+                <div class="rooster-nav-buttons">
+                    <button class="btn-secondary" id="roosterBack5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Terug
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cell Edit Dropdown (hidden, positioned absolutely) -->
+            <div class="rooster-dropdown" id="roosterDropdown" style="display:none;">
+                <div class="rooster-dropdown-header">Vervanging kiezen</div>
+                <div class="rooster-dropdown-list" id="roosterDropdownList"></div>
+                <div class="rooster-dropdown-custom">
+                    <input type="text" id="roosterDropdownInput" placeholder="Andere naam...">
+                    <button class="btn-primary btn-sm" id="roosterDropdownSave">OK</button>
+                </div>
+            </div>
+
+        </div><!-- /pageRooster -->
+
         <!-- ═══ Account & Settings ═══ -->
         <div class="page" id="pageAccount">
             <div class="account-grid">
@@ -1422,6 +1617,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         PAGES: <?= json_encode(NOTION_PAGES) ?>
     };
     </script>
-    <script src="dashboard.js?v=23"></script>
+    <script src="dashboard.js?v=24"></script>
 </body>
 </html>

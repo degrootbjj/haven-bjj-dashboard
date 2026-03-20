@@ -41,7 +41,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', lessen: 'Lessen', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', mailnewsletter: 'Newsletter', uploads: 'Uploads', simulator: 'Prijssimulator', gyminfo: 'Gym Info', account: 'Account' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', lessen: 'Lessen', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', mailnewsletter: 'Newsletter', uploads: 'Uploads', simulator: 'Prijssimulator', rooster: 'Rooster', gyminfo: 'Gym Info', account: 'Account' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -70,6 +70,7 @@ function updateCurrentPage() {
     else if (currentPage === 'nieuwsbrief') updateNieuwsbrief();
     else if (currentPage === 'uploads') updateUploads(ym);
     else if (currentPage === 'simulator') updateSimulator(ym);
+    else if (currentPage === 'rooster') { /* rooster has its own flow */ }
     else if (currentPage === 'gyminfo') loadGymInfo();
     else if (currentPage === 'account') { /* static page, no data update needed */ }
 }
@@ -3739,3 +3740,729 @@ ${items}
 </channel>
 </rss>`;
 }
+
+// ============================================
+// ROOSTER TOOL — Monthly Staff Schedule Wizard
+// ============================================
+
+let roosterData = {
+    month: null,
+    year: null,
+    coaches: {},      // dateStr -> { slot -> name }
+    balie: {},        // dateStr -> name
+    allCoaches: [],
+    allBalie: [],
+    allDates: [],     // sorted date strings for the month
+    coachSlots: [],   // unique slot names in order
+    absences: {},     // name -> [dateStr, ...]
+    slotHistory: {},  // slot -> Set of names who have done that slot
+    modified: false
+};
+
+const ROOSTER_MONTHS_NL = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+const ROOSTER_MONTHS_EN = ['jan', 'feb', 'march', 'april', 'may', 'june', 'july', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const ROOSTER_DAYS_NL = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+const ROOSTER_DAYS_SHORT = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
+const ROOSTER_BALIE_HOURS = { 1: 4.5, 2: 3.5, 3: 4.5, 4: 4.75, 5: 3.5, 0: 3, 6: 0 };
+// day-of-week: 0=Sun, 1=Mon, ..., 6=Sat
+
+let roosterCurrentStep = 1;
+
+// --- Initialize default month/year ---
+(function roosterInit() {
+    const now = new Date();
+    const mSel = document.getElementById('roosterMonth');
+    const ySel = document.getElementById('roosterYear');
+    if (mSel) mSel.value = String(now.getMonth() + 1);
+    if (ySel) ySel.value = String(now.getFullYear());
+})();
+
+// --- Wizard Navigation ---
+function roosterGoToStep(step) {
+    roosterCurrentStep = step;
+    for (let i = 1; i <= 5; i++) {
+        const panel = document.getElementById('roosterStep' + i);
+        if (panel) panel.style.display = (i === step) ? '' : 'none';
+    }
+    // Update step indicators
+    document.querySelectorAll('.rooster-step').forEach(el => {
+        const s = parseInt(el.dataset.step);
+        el.classList.toggle('active', s === step);
+        el.classList.toggle('done', s < step);
+    });
+    document.querySelectorAll('.rooster-step-line').forEach((el, i) => {
+        el.classList.toggle('done', (i + 1) < step);
+    });
+}
+
+// --- Step 1: Load from Notion ---
+document.getElementById('roosterLoadBtn')?.addEventListener('click', async () => {
+    const month = parseInt(document.getElementById('roosterMonth').value);
+    const year = parseInt(document.getElementById('roosterYear').value);
+    const loading = document.getElementById('roosterLoading');
+    const errorEl = document.getElementById('roosterError');
+
+    loading.style.display = 'flex';
+    errorEl.style.display = 'none';
+
+    try {
+        await nbFetchAllData();
+
+        const mName = ROOSTER_MONTHS_EN[month - 1];
+        const [coachTables, balieTables] = await Promise.all([
+            nbFetchMonthSchedule(nbCache.coaches, nbCache.coachPages || [], 'coaches', mName),
+            nbFetchMonthSchedule(nbCache.balie, nbCache.baliePages || [], 'balie', mName)
+        ]);
+
+        if (!coachTables && !balieTables) {
+            throw new Error('Geen roosterdata gevonden voor ' + ROOSTER_MONTHS_NL[month - 1] + ' ' + year);
+        }
+
+        roosterParseNotionData(coachTables, balieTables, month, year);
+        loading.style.display = 'none';
+        roosterBuildAbsenceForm();
+        roosterGoToStep(2);
+    } catch (err) {
+        loading.style.display = 'none';
+        errorEl.style.display = '';
+        errorEl.textContent = 'Fout: ' + err.message;
+        console.error('Rooster load error:', err);
+    }
+});
+
+// --- Parse Notion tables into roosterData ---
+function roosterParseNotionData(coachTables, balieTables, month, year) {
+    roosterData = {
+        month, year,
+        coaches: {},
+        balie: {},
+        allCoaches: [],
+        allBalie: [],
+        allDates: [],
+        coachSlots: [],
+        absences: {},
+        slotHistory: {},
+        modified: false
+    };
+
+    const allCoachNames = new Set();
+    const allBalieNames = new Set();
+    const allDates = new Set();
+    const slotOrder = [];
+    const slotHistoryMap = {};
+
+    // Parse coach tables
+    if (coachTables) {
+        for (const table of coachTables) {
+            // Find week blocks: rows where first cells contain dates
+            let i = 0;
+            while (i < table.length) {
+                const row = table[i];
+                // Date row: cells contain dd/mm patterns
+                const dateRow = row;
+                const dates = [];
+                for (let c = 1; c < dateRow.length; c++) {
+                    const cell = (dateRow[c] || '').trim();
+                    if (!cell) continue;
+                    const parsed = roosterParseDateCell(cell, month, year);
+                    if (parsed) dates.push({ col: c, date: parsed });
+                }
+
+                if (dates.length === 0) { i++; continue; }
+
+                // Next row should be day names, skip it
+                i++;
+                if (i >= table.length) break;
+                const dayRow = table[i];
+                i++;
+
+                // Following rows are slot assignments until empty row
+                while (i < table.length) {
+                    const slotRow = table[i];
+                    if (slotRow.every(c => !(c || '').trim())) { i++; break; }
+
+                    const slotName = (slotRow[0] || '').trim();
+                    if (slotName && !slotOrder.includes(slotName)) slotOrder.push(slotName);
+                    if (slotName && !slotHistoryMap[slotName]) slotHistoryMap[slotName] = new Set();
+
+                    for (const { col, date } of dates) {
+                        const name = (slotRow[col] || '').trim();
+                        if (name && slotName) {
+                            const dateStr = roosterDateStr(date);
+                            if (!roosterData.coaches[dateStr]) roosterData.coaches[dateStr] = {};
+                            roosterData.coaches[dateStr][slotName] = name;
+                            allCoachNames.add(name);
+                            allDates.add(dateStr);
+                            slotHistoryMap[slotName].add(name);
+                        }
+                    }
+                    i++;
+                }
+            }
+        }
+    }
+
+    // Parse balie tables
+    if (balieTables) {
+        for (const table of balieTables) {
+            let i = 0;
+            while (i < table.length) {
+                const row = table[i];
+                const dates = [];
+                for (let c = 1; c < row.length; c++) {
+                    const cell = (row[c] || '').trim();
+                    if (!cell) continue;
+                    const parsed = roosterParseDateCell(cell, month, year);
+                    if (parsed) dates.push({ col: c, date: parsed });
+                }
+
+                if (dates.length === 0) { i++; continue; }
+
+                // Skip day name row
+                i++;
+                if (i >= table.length) break;
+                i++;
+
+                // Person row
+                if (i < table.length) {
+                    const personRow = table[i];
+                    for (const { col, date } of dates) {
+                        const name = (personRow[col] || '').trim();
+                        if (name) {
+                            const dateStr = roosterDateStr(date);
+                            roosterData.balie[dateStr] = name;
+                            allBalieNames.add(name);
+                            allDates.add(dateStr);
+                        }
+                    }
+                    i++;
+                }
+
+                // Skip empty separator
+                if (i < table.length && table[i].every(c => !(c || '').trim())) i++;
+            }
+        }
+    }
+
+    roosterData.allCoaches = [...allCoachNames].sort();
+    roosterData.allBalie = [...allBalieNames].sort();
+    roosterData.allDates = [...allDates].sort();
+    roosterData.coachSlots = slotOrder;
+    roosterData.slotHistory = slotHistoryMap;
+}
+
+function roosterParseDateCell(cell, month, year) {
+    // Parse "02/03", "2/3", "02-03", "2-3"
+    const m = cell.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+    if (m) {
+        const day = parseInt(m[1]);
+        const mon = parseInt(m[2]);
+        if (mon === month) return new Date(year, month - 1, day);
+    }
+    return null;
+}
+
+function roosterDateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function roosterFormatDateShort(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.getDate() + '/' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function roosterGetDayName(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return ROOSTER_DAYS_SHORT[d.getDay()];
+}
+
+// --- Step 2: Absence Form ---
+function roosterBuildAbsenceForm() {
+    const coachDiv = document.getElementById('roosterAbsenceCoaches');
+    const balieDiv = document.getElementById('roosterAbsenceBalie');
+
+    coachDiv.innerHTML = '<h3 class="rooster-section-title">Coaches</h3>' +
+        roosterData.allCoaches.map(name => roosterAbsenceRow(name, 'coach')).join('');
+
+    balieDiv.innerHTML = '<h3 class="rooster-section-title">Balie</h3>' +
+        roosterData.allBalie.map(name => roosterAbsenceRow(name, 'balie')).join('');
+
+    // Bind input events
+    document.querySelectorAll('.rooster-absence-input').forEach(input => {
+        input.addEventListener('input', () => roosterParseAbsenceInput(input));
+    });
+}
+
+function roosterAbsenceRow(name, type) {
+    const id = 'absence_' + type + '_' + name.replace(/\s+/g, '_');
+    return `<div class="rooster-absence-row">
+        <div class="rooster-absence-name">${name}</div>
+        <div class="rooster-absence-field">
+            <input type="text" class="rooster-absence-input" id="${id}" data-name="${name}"
+                   placeholder="bijv. 3 en 7 maart, of 5, 12, 19">
+            <div class="rooster-absence-pills" id="${id}_pills"></div>
+        </div>
+    </div>`;
+}
+
+function roosterParseAbsenceInput(input) {
+    const name = input.dataset.name;
+    const text = input.value.trim();
+    const pillsEl = document.getElementById(input.id + '_pills');
+    const dates = roosterParseAbsenceText(text, roosterData.month, roosterData.year);
+
+    roosterData.absences[name] = dates;
+
+    pillsEl.innerHTML = dates.map(d => {
+        const dayName = roosterGetDayName(d);
+        return `<span class="rooster-pill">${dayName} ${roosterFormatDateShort(d)}</span>`;
+    }).join('');
+}
+
+function roosterParseAbsenceText(text, month, year) {
+    if (!text) return [];
+    const dates = [];
+    const monthStr = ROOSTER_MONTHS_NL[month - 1];
+
+    // Remove month names for cleaner parsing
+    let cleaned = text.toLowerCase()
+        .replace(new RegExp(monthStr, 'g'), '')
+        .replace(/januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december/g, '');
+
+    // Replace 'en' and 'en' with comma
+    cleaned = cleaned.replace(/\ben\b/g, ',');
+
+    // Extract all numbers
+    const numbers = cleaned.match(/\d+/g);
+    if (numbers) {
+        for (const num of numbers) {
+            const day = parseInt(num);
+            if (day >= 1 && day <= 31) {
+                const d = new Date(year, month - 1, day);
+                if (d.getMonth() === month - 1) {
+                    dates.push(roosterDateStr(d));
+                }
+            }
+        }
+    }
+
+    // Also check dd/mm or dd-mm patterns in original text
+    const datePatterns = text.match(/(\d{1,2})[\/\-](\d{1,2})/g);
+    if (datePatterns) {
+        for (const pat of datePatterns) {
+            const m = pat.match(/(\d{1,2})[\/\-](\d{1,2})/);
+            if (m) {
+                const day = parseInt(m[1]);
+                const mon = parseInt(m[2]);
+                if (mon === month && day >= 1 && day <= 31) {
+                    const dateStr = roosterDateStr(new Date(year, month - 1, day));
+                    if (!dates.includes(dateStr)) dates.push(dateStr);
+                }
+            }
+        }
+    }
+
+    return [...new Set(dates)].sort();
+}
+
+function roosterIsAbsent(name, dateStr) {
+    return (roosterData.absences[name] || []).includes(dateStr);
+}
+
+// --- Step 3: Schedule Grid ---
+function roosterRenderScheduleGrids() {
+    roosterRenderCoachGrid();
+    roosterRenderBalieGrid();
+    const mName = ROOSTER_MONTHS_NL[roosterData.month - 1];
+    document.getElementById('roosterCoachSubtitle').textContent = mName + ' ' + roosterData.year;
+    document.getElementById('roosterBalieSubtitle').textContent = mName + ' ' + roosterData.year;
+}
+
+function roosterRenderCoachGrid() {
+    const wrap = document.getElementById('roosterCoachGrid');
+    const dates = roosterData.allDates.filter(d => {
+        // Only dates that have coach data
+        return roosterData.coaches[d] && Object.keys(roosterData.coaches[d]).length > 0;
+    });
+
+    if (dates.length === 0) {
+        wrap.innerHTML = '<p class="rooster-empty">Geen coach data gevonden</p>';
+        return;
+    }
+
+    let html = '<table class="rooster-table"><thead><tr><th class="rooster-th-slot">Slot</th>';
+    for (const d of dates) {
+        html += `<th class="rooster-th-date"><div>${roosterGetDayName(d)}</div><div>${roosterFormatDateShort(d)}</div></th>`;
+    }
+    html += '</tr></thead><tbody>';
+
+    for (const slot of roosterData.coachSlots) {
+        html += `<tr><td class="rooster-td-slot">${slot}</td>`;
+        for (const d of dates) {
+            const name = (roosterData.coaches[d] || {})[slot] || '';
+            const absent = name && roosterIsAbsent(name, d);
+            const cls = absent ? 'rooster-cell-absent' : (name ? 'rooster-cell-ok' : 'rooster-cell-empty');
+            html += `<td class="rooster-cell ${cls}" data-date="${d}" data-slot="${slot}" data-type="coach">${name || '—'}</td>`;
+        }
+        html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+
+    // Bind click on cells
+    wrap.querySelectorAll('.rooster-cell').forEach(cell => {
+        cell.addEventListener('click', () => roosterCellClick(cell));
+    });
+}
+
+function roosterRenderBalieGrid() {
+    const wrap = document.getElementById('roosterBalieGrid');
+    const dates = roosterData.allDates.filter(d => roosterData.balie[d]);
+
+    if (dates.length === 0) {
+        wrap.innerHTML = '<p class="rooster-empty">Geen balie data gevonden</p>';
+        return;
+    }
+
+    // Group by week
+    let html = '<table class="rooster-table"><thead><tr><th class="rooster-th-slot">Dag</th><th>Datum</th><th>Medewerker</th></tr></thead><tbody>';
+
+    for (const d of dates) {
+        const name = roosterData.balie[d] || '';
+        const absent = name && roosterIsAbsent(name, d);
+        const cls = absent ? 'rooster-cell-absent' : (name ? 'rooster-cell-ok' : 'rooster-cell-empty');
+        html += `<tr>
+            <td class="rooster-td-slot">${roosterGetDayName(d)}</td>
+            <td>${roosterFormatDateShort(d)}</td>
+            <td class="rooster-cell ${cls}" data-date="${d}" data-type="balie">${name || '—'}</td>
+        </tr>`;
+    }
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('.rooster-cell').forEach(cell => {
+        cell.addEventListener('click', () => roosterCellClick(cell));
+    });
+}
+
+// --- Cell Edit Dropdown ---
+function roosterCellClick(cell) {
+    const dropdown = document.getElementById('roosterDropdown');
+    const list = document.getElementById('roosterDropdownList');
+    const input = document.getElementById('roosterDropdownInput');
+    const dateStr = cell.dataset.date;
+    const slot = cell.dataset.slot;
+    const type = cell.dataset.type;
+
+    // Build suggestions
+    let suggestions = [];
+    if (type === 'coach' && slot) {
+        const history = roosterData.slotHistory[slot];
+        if (history) suggestions = [...history].sort();
+        // Also add all coaches not in history
+        for (const c of roosterData.allCoaches) {
+            if (!suggestions.includes(c)) suggestions.push(c);
+        }
+    } else {
+        suggestions = [...roosterData.allBalie];
+    }
+
+    // Filter out absent people for this date
+    suggestions = suggestions.map(name => ({
+        name,
+        absent: roosterIsAbsent(name, dateStr),
+        current: cell.textContent.trim() === name
+    }));
+
+    list.innerHTML = suggestions.map(s => {
+        const cls = s.current ? 'rooster-dd-item current' : (s.absent ? 'rooster-dd-item absent' : 'rooster-dd-item');
+        const badge = s.absent ? ' <span class="rooster-dd-absent-badge">afwezig</span>' : '';
+        return `<div class="${cls}" data-name="${s.name}">${s.name}${badge}</div>`;
+    }).join('');
+
+    // Position dropdown near cell
+    const rect = cell.getBoundingClientRect();
+    dropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+    dropdown.style.left = (rect.left + window.scrollX) + 'px';
+    dropdown.style.display = '';
+
+    input.value = '';
+
+    // Store reference to the cell being edited
+    dropdown._targetCell = cell;
+
+    // Bind click on list items
+    list.querySelectorAll('.rooster-dd-item').forEach(item => {
+        item.addEventListener('click', () => {
+            roosterApplyCellEdit(cell, item.dataset.name);
+            dropdown.style.display = 'none';
+        });
+    });
+}
+
+document.getElementById('roosterDropdownSave')?.addEventListener('click', () => {
+    const dropdown = document.getElementById('roosterDropdown');
+    const input = document.getElementById('roosterDropdownInput');
+    const cell = dropdown._targetCell;
+    if (cell && input.value.trim()) {
+        roosterApplyCellEdit(cell, input.value.trim());
+    }
+    dropdown.style.display = 'none';
+});
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('roosterDropdown');
+    if (dropdown && dropdown.style.display !== 'none') {
+        if (!dropdown.contains(e.target) && !e.target.classList.contains('rooster-cell')) {
+            dropdown.style.display = 'none';
+        }
+    }
+});
+
+function roosterApplyCellEdit(cell, newName) {
+    const dateStr = cell.dataset.date;
+    const slot = cell.dataset.slot;
+    const type = cell.dataset.type;
+
+    if (type === 'coach' && slot) {
+        if (!roosterData.coaches[dateStr]) roosterData.coaches[dateStr] = {};
+        roosterData.coaches[dateStr][slot] = newName;
+    } else if (type === 'balie') {
+        roosterData.balie[dateStr] = newName;
+    }
+
+    cell.textContent = newName;
+    const absent = roosterIsAbsent(newName, dateStr);
+    cell.classList.toggle('rooster-cell-absent', absent);
+    cell.classList.toggle('rooster-cell-ok', !absent && !!newName);
+    cell.classList.toggle('rooster-cell-replaced', true);
+    roosterData.modified = true;
+}
+
+// --- Step 4: Hours Calculation ---
+function roosterCalcHours() {
+    const wrap = document.getElementById('roosterHoursTable');
+    const hours = {}; // name -> { total, days: { dayOfWeek: count } }
+
+    for (const [dateStr, name] of Object.entries(roosterData.balie)) {
+        if (!name) continue;
+        if (!hours[name]) hours[name] = { total: 0, days: {} };
+        const d = new Date(dateStr + 'T00:00:00');
+        const dow = d.getDay();
+        const h = ROOSTER_BALIE_HOURS[dow] || 0;
+        hours[name].total += h;
+        hours[name].days[dow] = (hours[name].days[dow] || 0) + 1;
+    }
+
+    const dayLabels = { 1: 'Ma', 2: 'Di', 3: 'Wo', 4: 'Do', 5: 'Vr', 0: 'Zo', 6: 'Za' };
+    const activeDays = [1, 2, 3, 4, 5, 0]; // Mon-Fri + Sun
+
+    let html = '<table class="rooster-table rooster-hours-table"><thead><tr><th>Naam</th>';
+    for (const dow of activeDays) {
+        html += `<th>${dayLabels[dow]} (${ROOSTER_BALIE_HOURS[dow]}u)</th>`;
+    }
+    html += '<th class="rooster-hours-total">Totaal</th></tr></thead><tbody>';
+
+    for (const [name, data] of Object.entries(hours).sort((a, b) => a[0].localeCompare(b[0]))) {
+        html += `<tr><td class="rooster-td-slot">${name}</td>`;
+        for (const dow of activeDays) {
+            const count = data.days[dow] || 0;
+            html += `<td>${count > 0 ? count + 'x' : '—'}</td>`;
+        }
+        html += `<td class="rooster-hours-total"><strong>${data.total.toFixed(1)} uur</strong></td></tr>`;
+    }
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+}
+
+// --- Step 5: Preview & Export ---
+function roosterBuildPreview() {
+    const wrap = document.getElementById('roosterPreview');
+    const mName = ROOSTER_MONTHS_NL[roosterData.month - 1];
+    const title = 'Rooster ' + mName + ' ' + roosterData.year;
+
+    let html = `<div class="rooster-preview-inner">`;
+    html += `<h2 style="text-align:center; margin-bottom:16px;">${title}</h2>`;
+
+    // Coaches table
+    const coachDates = roosterData.allDates.filter(d => roosterData.coaches[d] && Object.keys(roosterData.coaches[d]).length > 0);
+    if (coachDates.length > 0) {
+        html += '<h3>Coaches Rooster</h3>';
+
+        // Group by weeks (Mon-Sat blocks)
+        const weeks = roosterGroupByWeek(coachDates);
+        for (const weekDates of weeks) {
+            html += '<table class="rooster-preview-table"><thead><tr><th></th>';
+            for (const d of weekDates) {
+                html += `<th>${roosterGetDayName(d)} ${roosterFormatDateShort(d)}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+            for (const slot of roosterData.coachSlots) {
+                const hasData = weekDates.some(d => (roosterData.coaches[d] || {})[slot]);
+                if (!hasData) continue;
+                html += `<tr><td><strong>${slot}</strong></td>`;
+                for (const d of weekDates) {
+                    const name = (roosterData.coaches[d] || {})[slot] || '';
+                    html += `<td>${name}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+        }
+    }
+
+    // Balie table
+    const balieDates = roosterData.allDates.filter(d => roosterData.balie[d]);
+    if (balieDates.length > 0) {
+        html += '<h3 style="margin-top:24px;">Balie Rooster</h3>';
+        const weeks = roosterGroupByWeek(balieDates);
+        for (const weekDates of weeks) {
+            html += '<table class="rooster-preview-table"><thead><tr>';
+            for (const d of weekDates) {
+                html += `<th>${roosterGetDayName(d)} ${roosterFormatDateShort(d)}</th>`;
+            }
+            html += '</tr></thead><tbody><tr>';
+            for (const d of weekDates) {
+                html += `<td>${roosterData.balie[d] || ''}</td>`;
+            }
+            html += '</tr></tbody></table>';
+        }
+    }
+
+    html += '</div>';
+    wrap.innerHTML = html;
+}
+
+function roosterGroupByWeek(dates) {
+    const weeks = [];
+    let currentWeek = [];
+    let lastMonday = null;
+
+    for (const d of dates) {
+        const date = new Date(d + 'T00:00:00');
+        const day = date.getDay();
+        const monday = new Date(date);
+        monday.setDate(date.getDate() - ((day + 6) % 7));
+        const mondayStr = roosterDateStr(monday);
+
+        if (lastMonday !== null && mondayStr !== lastMonday) {
+            if (currentWeek.length > 0) weeks.push(currentWeek);
+            currentWeek = [];
+        }
+        currentWeek.push(d);
+        lastMonday = mondayStr;
+    }
+    if (currentWeek.length > 0) weeks.push(currentWeek);
+    return weeks;
+}
+
+function roosterGenerateHtml() {
+    const mName = ROOSTER_MONTHS_NL[roosterData.month - 1];
+    const title = 'Rooster ' + mName + ' ' + roosterData.year;
+
+    let html = `<!DOCTYPE html><html><head><style>
+body { font-family: 'Inter', Arial, sans-serif; color: #1a1a1a; max-width: 900px; margin: 0 auto; padding: 20px; }
+h2 { text-align: center; color: #1e293b; }
+h3 { color: #334155; margin-top: 24px; margin-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+th, td { border: 1px solid #e2e8f0; padding: 6px 10px; text-align: center; }
+th { background: #f1f5f9; font-weight: 600; color: #334155; }
+td:first-child { text-align: left; font-weight: 500; }
+</style></head><body>`;
+
+    html += `<h2>${title}</h2>`;
+
+    const coachDates = roosterData.allDates.filter(d => roosterData.coaches[d] && Object.keys(roosterData.coaches[d]).length > 0);
+    if (coachDates.length > 0) {
+        html += '<h3>Coaches</h3>';
+        const weeks = roosterGroupByWeek(coachDates);
+        for (const weekDates of weeks) {
+            html += '<table><thead><tr><th></th>';
+            for (const d of weekDates) html += `<th>${roosterGetDayName(d)} ${roosterFormatDateShort(d)}</th>`;
+            html += '</tr></thead><tbody>';
+            for (const slot of roosterData.coachSlots) {
+                const hasData = weekDates.some(d => (roosterData.coaches[d] || {})[slot]);
+                if (!hasData) continue;
+                html += `<tr><td>${slot}</td>`;
+                for (const d of weekDates) html += `<td>${(roosterData.coaches[d] || {})[slot] || ''}</td>`;
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+        }
+    }
+
+    const balieDates = roosterData.allDates.filter(d => roosterData.balie[d]);
+    if (balieDates.length > 0) {
+        html += '<h3>Balie</h3>';
+        const weeks = roosterGroupByWeek(balieDates);
+        for (const weekDates of weeks) {
+            html += '<table><thead><tr>';
+            for (const d of weekDates) html += `<th>${roosterGetDayName(d)} ${roosterFormatDateShort(d)}</th>`;
+            html += '</tr></thead><tbody><tr>';
+            for (const d of weekDates) html += `<td>${roosterData.balie[d] || ''}</td>`;
+            html += '</tr></tbody></table>';
+        }
+    }
+
+    // Hours
+    html += '<h3>Balie Uren</h3>';
+    const hours = {};
+    for (const [dateStr, name] of Object.entries(roosterData.balie)) {
+        if (!name) continue;
+        if (!hours[name]) hours[name] = 0;
+        const d = new Date(dateStr + 'T00:00:00');
+        hours[name] += ROOSTER_BALIE_HOURS[d.getDay()] || 0;
+    }
+    html += '<table><thead><tr><th>Naam</th><th>Uren</th></tr></thead><tbody>';
+    for (const [name, total] of Object.entries(hours).sort((a, b) => a[0].localeCompare(b[0]))) {
+        html += `<tr><td>${name}</td><td>${total.toFixed(1)}</td></tr>`;
+    }
+    html += '</tbody></table>';
+
+    html += '</body></html>';
+    return html;
+}
+
+// Copy HTML button
+document.getElementById('roosterCopyHtml')?.addEventListener('click', () => {
+    const html = roosterGenerateHtml();
+    navigator.clipboard.writeText(html).then(() => {
+        const btn = document.getElementById('roosterCopyHtml');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Gekopieerd!';
+        setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+});
+
+// Send to Notion (placeholder)
+document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
+    const msg = document.getElementById('roosterSendMsg');
+    msg.style.display = '';
+    msg.className = 'rooster-send-msg rooster-send-success';
+    msg.textContent = 'Rooster succesvol opgeslagen! (Placeholder - Notion schrijven nog niet geimplementeerd)';
+    setTimeout(() => msg.style.display = 'none', 4000);
+});
+
+// --- Navigation Buttons ---
+document.getElementById('roosterBack2')?.addEventListener('click', () => roosterGoToStep(1));
+document.getElementById('roosterNext2')?.addEventListener('click', () => {
+    // Parse all absence inputs before moving on
+    document.querySelectorAll('.rooster-absence-input').forEach(input => roosterParseAbsenceInput(input));
+    roosterRenderScheduleGrids();
+    roosterGoToStep(3);
+});
+document.getElementById('roosterBack3')?.addEventListener('click', () => roosterGoToStep(2));
+document.getElementById('roosterNext3')?.addEventListener('click', () => {
+    roosterCalcHours();
+    roosterGoToStep(4);
+});
+document.getElementById('roosterBack4')?.addEventListener('click', () => roosterGoToStep(3));
+document.getElementById('roosterNext4')?.addEventListener('click', () => {
+    roosterBuildPreview();
+    roosterGoToStep(5);
+});
+document.getElementById('roosterBack5')?.addEventListener('click', () => roosterGoToStep(4));
