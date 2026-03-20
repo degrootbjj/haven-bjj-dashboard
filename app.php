@@ -665,6 +665,8 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="nl-step" data-step="3"><span class="nl-step-num">3</span><span class="nl-step-label">Details</span></div>
                 <div class="nl-step-line"></div>
                 <div class="nl-step" data-step="4"><span class="nl-step-num">4</span><span class="nl-step-label">Publiceren</span></div>
+                <div class="nl-step-line"></div>
+                <div class="nl-step" data-step="5"><span class="nl-step-num">5</span><span class="nl-step-label">Blog</span></div>
             </div>
 
             <!-- Step 1: Fetch -->
@@ -756,6 +758,14 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                                 <label for="nlSubjectEN">Onderwerp (EN)</label>
                                 <input type="text" id="nlSubjectEN" class="nl-input" placeholder="bijv. Training Tips + Competition Results">
                             </div>
+                            <div class="nl-form-group">
+                                <label for="nlPreviewNL">Preview tekst (NL)</label>
+                                <input type="text" id="nlPreviewNL" class="nl-input" placeholder="Korte preview die in de inbox zichtbaar is">
+                            </div>
+                            <div class="nl-form-group">
+                                <label for="nlPreviewEN">Preview tekst (EN)</label>
+                                <input type="text" id="nlPreviewEN" class="nl-input" placeholder="Short preview text visible in inbox">
+                            </div>
                         </div>
                     </div>
                     <div class="card-footer" style="display:flex;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--border);">
@@ -814,10 +824,59 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                                 <a id="nlLinkNL" href="#" target="_blank" class="btn-primary" style="padding:12px 24px;text-decoration:none;">🇳🇱 Open NL campagne</a>
                                 <a id="nlLinkEN" href="#" target="_blank" class="btn-primary" style="padding:12px 24px;text-decoration:none;background:var(--blue);">🇬🇧 Open EN campagne</a>
                             </div>
+                            <button class="btn-primary" id="nlToBlog" style="margin-top:16px;padding:12px 24px;background:var(--green);">📝 Secties als blogpost plaatsen</button>
                             <button class="btn-secondary" id="nlRestart" style="margin-top:16px;">↩️ Nieuwe nieuwsbrief</button>
                         </div>
 
                         <div id="nlError" style="display:none;margin-top:16px;padding:16px;background:var(--red-light);border-radius:8px;color:var(--red);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Blog -->
+            <div class="nl-panel" id="nlStep5" style="display:none;">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">📝 Secties publiceren als blogposts</h2></div>
+                    <div class="card-body">
+                        <p style="color:var(--text-secondary);margin-bottom:20px;">Selecteer welke secties je als blogpost op havenbjj.nl wilt plaatsen.</p>
+
+                        <!-- Section selection -->
+                        <div id="nlBlogSections" style="margin-bottom:24px;"></div>
+
+                        <div style="display:flex;gap:12px;align-items:center;">
+                            <button class="btn-primary" id="nlBlogGenerate" style="padding:12px 32px;font-size:15px;" disabled>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                Blogposts genereren
+                            </button>
+                            <span id="nlBlogCount" style="color:var(--text-secondary);font-size:14px;">0 geselecteerd</span>
+                        </div>
+
+                        <!-- Progress -->
+                        <div id="nlBlogProgress" style="display:none;margin-top:24px;">
+                            <div class="nl-overall-progress">
+                                <div class="nl-overall-bar"><div class="nl-overall-fill" id="nlBlogProgressFill"></div></div>
+                                <div class="nl-overall-text" id="nlBlogProgressText">Verwerken...</div>
+                            </div>
+                            <div id="nlBlogProgressLog" style="margin-top:12px;font-size:13px;color:var(--text-secondary);"></div>
+                        </div>
+
+                        <!-- Success: Download -->
+                        <div id="nlBlogSuccess" style="display:none;margin-top:24px;padding:24px;background:var(--green-light);border-radius:12px;text-align:center;">
+                            <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+                            <h3 style="margin-bottom:8px;color:var(--text);">Importbestand klaar!</h3>
+                            <p style="color:var(--text-secondary);margin-bottom:20px;" id="nlBlogSuccessInfo"></p>
+                            <button class="btn-primary" id="nlBlogDownload" style="padding:12px 32px;font-size:15px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download XML
+                            </button>
+                            <p style="color:var(--text-secondary);margin-top:16px;font-size:13px;">Upload dit bestand via wp-admin → Extra → Importeren → WordPress.<br>Vink "Download en importeer bestandsbijlagen" aan.</p>
+                        </div>
+
+                        <div id="nlBlogError" style="display:none;margin-top:16px;padding:16px;background:var(--red-light);border-radius:8px;color:var(--red);"></div>
+                    </div>
+                    <div class="card-footer" style="display:flex;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--border);">
+                        <button class="btn-secondary" id="nlBlogBack">← Terug</button>
+                        <button class="btn-secondary" id="nlBlogRestart">↩️ Nieuwe nieuwsbrief</button>
                     </div>
                 </div>
             </div>

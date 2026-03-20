@@ -3298,6 +3298,8 @@ document.getElementById('nlToStep4')?.addEventListener('click', async () => {
     const number = document.getElementById('nlNumber').value;
     const subjectNL = document.getElementById('nlSubjectNL').value.trim();
     const subjectEN = document.getElementById('nlSubjectEN').value.trim();
+    const previewNL = document.getElementById('nlPreviewNL').value.trim();
+    const previewEN = document.getElementById('nlPreviewEN').value.trim();
 
     if (!number || !subjectNL || !subjectEN) {
         alert('Vul alle velden in!');
@@ -3359,6 +3361,8 @@ document.getElementById('nlToStep4')?.addEventListener('click', async () => {
                 number: parseInt(number),
                 subject_nl: subjectNL,
                 subject_en: subjectEN,
+                preview_nl: previewNL,
+                preview_en: previewEN,
                 html_nl: htmlNlChecked,
                 html_en: htmlEn
             })
@@ -3395,7 +3399,7 @@ document.getElementById('nlToStep4')?.addEventListener('click', async () => {
 });
 
 // Restart
-document.getElementById('nlRestart')?.addEventListener('click', () => {
+function nlResetAll() {
     nlCurrentHtml = '';
     nlCodeVisible = false;
     document.getElementById('nlEditor').value = '';
@@ -3406,9 +3410,15 @@ document.getElementById('nlRestart')?.addEventListener('click', () => {
     document.getElementById('nlNumber').value = '';
     document.getElementById('nlSubjectNL').value = '';
     document.getElementById('nlSubjectEN').value = '';
+    document.getElementById('nlPreviewNL').value = '';
+    document.getElementById('nlPreviewEN').value = '';
     document.getElementById('nlFetchInfo').style.display = 'none';
     document.getElementById('nlSuccess').style.display = 'none';
     document.getElementById('nlError').style.display = 'none';
+    document.getElementById('nlBlogSections').innerHTML = '';
+    document.getElementById('nlBlogProgress').style.display = 'none';
+    document.getElementById('nlBlogSuccess').style.display = 'none';
+    document.getElementById('nlBlogError').style.display = 'none';
     nlStopTimer();
     ['nlProg1', 'nlProg2', 'nlProg3'].forEach(id => {
         nlSetStep(id, '⏳', 'Wachten...', false);
@@ -3418,4 +3428,297 @@ document.getElementById('nlRestart')?.addEventListener('click', () => {
     const timer = document.getElementById('nlOverallTimer');
     if (timer) timer.textContent = '0:00';
     nlGoToStep(1);
+}
+document.getElementById('nlRestart')?.addEventListener('click', nlResetAll);
+document.getElementById('nlBlogRestart')?.addEventListener('click', nlResetAll);
+
+// ─── Step 5: Blog ─────────────────────────────────────────────────────────
+
+let nlBlogSectionsData = [];
+let nlBlogWxrContent = '';
+
+// Go to blog step
+document.getElementById('nlToBlog')?.addEventListener('click', async () => {
+    const sectionsEl = document.getElementById('nlBlogSections');
+    const errorEl = document.getElementById('nlBlogError');
+    sectionsEl.innerHTML = '<div style="color:var(--text-secondary);"><div class="nb-spinner" style="display:inline-block;width:20px;height:20px;margin-right:8px;vertical-align:middle;"></div>Secties analyseren...</div>';
+    errorEl.style.display = 'none';
+    document.getElementById('nlBlogSuccess').style.display = 'none';
+    document.getElementById('nlBlogProgress').style.display = 'none';
+
+    nlGoToStep(5);
+
+    try {
+        const resp = await fetch('api/newsletter.php?action=sections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ html: nlCurrentHtml })
+        });
+        if (!resp.ok) {
+            const e = await resp.json().catch(() => ({}));
+            throw new Error(e.error || 'Secties ophalen mislukt');
+        }
+        const data = await resp.json();
+        nlBlogSectionsData = data.sections;
+
+        if (!nlBlogSectionsData.length) {
+            sectionsEl.innerHTML = '<p style="color:var(--text-secondary);">Geen secties gevonden in de nieuwsbrief.</p>';
+            return;
+        }
+
+        // Render checkboxes
+        let html = '';
+        nlBlogSectionsData.forEach((s, i) => {
+            const checked = !s.skip ? 'checked' : '';
+            const dimStyle = s.skip ? 'opacity:0.5;' : '';
+            html += `<label style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--border);margin-bottom:8px;${dimStyle}transition:all 0.15s;">
+                <input type="checkbox" class="nl-blog-cb" data-index="${i}" ${checked} style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;">
+                <span style="flex:1;font-weight:500;">${s.title}</span>
+                ${s.skip ? '<span style="font-size:12px;color:var(--text-muted);background:var(--bg);padding:2px 8px;border-radius:4px;">Overgeslagen</span>' : ''}
+            </label>`;
+        });
+        // Select all / none
+        html += `<div style="margin-top:12px;display:flex;gap:8px;">
+            <button class="btn-secondary" id="nlBlogSelectAll" style="font-size:12px;padding:4px 12px;">Alles selecteren</button>
+            <button class="btn-secondary" id="nlBlogSelectNone" style="font-size:12px;padding:4px 12px;">Niets selecteren</button>
+        </div>`;
+        sectionsEl.innerHTML = html;
+
+        // Update count
+        nlBlogUpdateCount();
+
+        // Checkbox change handlers
+        sectionsEl.querySelectorAll('.nl-blog-cb').forEach(cb => {
+            cb.addEventListener('change', nlBlogUpdateCount);
+        });
+        document.getElementById('nlBlogSelectAll')?.addEventListener('click', () => {
+            sectionsEl.querySelectorAll('.nl-blog-cb').forEach(cb => { cb.checked = true; });
+            nlBlogUpdateCount();
+        });
+        document.getElementById('nlBlogSelectNone')?.addEventListener('click', () => {
+            sectionsEl.querySelectorAll('.nl-blog-cb').forEach(cb => { cb.checked = false; });
+            nlBlogUpdateCount();
+        });
+
+    } catch (err) {
+        sectionsEl.innerHTML = '';
+        errorEl.textContent = '❌ ' + err.message;
+        errorEl.style.display = '';
+    }
 });
+
+function nlBlogUpdateCount() {
+    const checked = document.querySelectorAll('.nl-blog-cb:checked').length;
+    document.getElementById('nlBlogCount').textContent = checked + ' geselecteerd';
+    document.getElementById('nlBlogGenerate').disabled = checked === 0;
+}
+
+// Back to step 4
+document.getElementById('nlBlogBack')?.addEventListener('click', () => nlGoToStep(4));
+
+// Generate blog posts
+document.getElementById('nlBlogGenerate')?.addEventListener('click', async () => {
+    const errorEl = document.getElementById('nlBlogError');
+    const progressEl = document.getElementById('nlBlogProgress');
+    const progressFill = document.getElementById('nlBlogProgressFill');
+    const progressText = document.getElementById('nlBlogProgressText');
+    const progressLog = document.getElementById('nlBlogProgressLog');
+
+    errorEl.style.display = 'none';
+    document.getElementById('nlBlogSuccess').style.display = 'none';
+    progressEl.style.display = '';
+    progressLog.innerHTML = '';
+
+    // Get selected sections
+    const selected = [];
+    document.querySelectorAll('.nl-blog-cb:checked').forEach(cb => {
+        selected.push(nlBlogSectionsData[parseInt(cb.dataset.index)]);
+    });
+
+    if (!selected.length) return;
+
+    document.getElementById('nlBlogGenerate').disabled = true;
+    const today = new Date().toISOString().split('T')[0];
+    const articles = [];
+
+    try {
+        for (let i = 0; i < selected.length; i++) {
+            const section = selected[i];
+            const pct = Math.round(((i) / selected.length) * 100);
+            progressFill.style.width = pct + '%';
+            progressText.textContent = `Sectie ${i + 1} van ${selected.length} opschonen...`;
+            progressLog.innerHTML += `<div>🔄 ${section.title}...</div>`;
+
+            const resp = await fetch('api/newsletter.php?action=blog-clean', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ html: section.html, title: section.title })
+            });
+            if (!resp.ok) {
+                const e = await resp.json().catch(() => ({}));
+                throw new Error(e.error || `Opschonen mislukt: ${section.title}`);
+            }
+            const data = await resp.json();
+
+            // Generate slug
+            const slug = section.title.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .trim();
+
+            articles.push({
+                title: section.title,
+                slug: slug,
+                date: today,
+                content: data.html
+            });
+
+            progressLog.lastChild.innerHTML = `✅ ${section.title}`;
+        }
+
+        progressFill.style.width = '100%';
+        progressText.textContent = 'WXR bestand genereren...';
+
+        // Generate WXR XML client-side
+        nlBlogWxrContent = nlGenerateWXR(articles);
+
+        progressText.textContent = 'Klaar!';
+
+        // Show success
+        const imgCount = (nlBlogWxrContent.match(/<wp:post_type>attachment<\/wp:post_type>/g) || []).length;
+        document.getElementById('nlBlogSuccessInfo').textContent = `${articles.length} artikelen en ${imgCount} afbeeldingen klaar voor import.`;
+        document.getElementById('nlBlogSuccess').style.display = '';
+
+    } catch (err) {
+        errorEl.textContent = '❌ ' + err.message;
+        errorEl.style.display = '';
+    } finally {
+        document.getElementById('nlBlogGenerate').disabled = false;
+    }
+});
+
+// Download WXR
+document.getElementById('nlBlogDownload')?.addEventListener('click', () => {
+    if (!nlBlogWxrContent) return;
+    const number = document.getElementById('nlNumber').value || 'nieuwsbrief';
+    const blob = new Blob([nlBlogWxrContent], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `blog-import-${number}.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+// Generate WXR XML from articles array
+function nlGenerateWXR(articles) {
+    let items = '';
+    let attachmentId = 9000;
+    const seenUrls = new Set();
+
+    articles.forEach((art, i) => {
+        const postId = 8000 + i;
+        const postDate = art.date + ' 09:00:00';
+        const d = new Date(art.date + 'T09:00:00Z');
+        const pubDate = d.toUTCString();
+
+        items += `    <item>
+        <title><![CDATA[${art.title}]]></title>
+        <link>https://havenbjj.nl/${art.slug}/</link>
+        <pubDate>${pubDate}</pubDate>
+        <dc:creator><![CDATA[web2858]]></dc:creator>
+        <guid isPermaLink="false">https://havenbjj.nl/?p=${postId}</guid>
+        <description></description>
+        <content:encoded><![CDATA[${art.content}]]></content:encoded>
+        <excerpt:encoded><![CDATA[]]></excerpt:encoded>
+        <wp:post_id>${postId}</wp:post_id>
+        <wp:post_date>${postDate}</wp:post_date>
+        <wp:post_date_gmt>${postDate}</wp:post_date_gmt>
+        <wp:post_modified>${postDate}</wp:post_modified>
+        <wp:post_modified_gmt>${postDate}</wp:post_modified_gmt>
+        <wp:comment_status>closed</wp:comment_status>
+        <wp:ping_status>closed</wp:ping_status>
+        <wp:post_name>${art.slug}</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>post</wp:post_type>
+        <wp:post_password></wp:post_password>
+        <wp:is_sticky>0</wp:is_sticky>
+        <category domain="category" nicename="nieuwsbrief"><![CDATA[Nieuwsbrief]]></category>
+    </item>\n`;
+
+        // Extract images and create attachment items
+        const imgRegex = /<img[^>]+src="([^"]+)"/g;
+        let match;
+        while ((match = imgRegex.exec(art.content)) !== null) {
+            const url = match[1];
+            if (seenUrls.has(url)) continue;
+            seenUrls.add(url);
+            const filename = url.split('?')[0].split('/').pop();
+            const imgTitle = filename.split('.')[0];
+            items += `    <item>
+        <title><![CDATA[${imgTitle}]]></title>
+        <link>${url}</link>
+        <pubDate></pubDate>
+        <dc:creator><![CDATA[web2858]]></dc:creator>
+        <guid isPermaLink="false">${url}</guid>
+        <description></description>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <excerpt:encoded><![CDATA[]]></excerpt:encoded>
+        <wp:post_id>${attachmentId}</wp:post_id>
+        <wp:post_date>${postDate}</wp:post_date>
+        <wp:post_date_gmt>${postDate}</wp:post_date_gmt>
+        <wp:post_modified>${postDate}</wp:post_modified>
+        <wp:post_modified_gmt>${postDate}</wp:post_modified_gmt>
+        <wp:comment_status>closed</wp:comment_status>
+        <wp:ping_status>closed</wp:ping_status>
+        <wp:post_name>${imgTitle}</wp:post_name>
+        <wp:status>inherit</wp:status>
+        <wp:post_parent>${postId}</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>attachment</wp:post_type>
+        <wp:post_password></wp:post_password>
+        <wp:is_sticky>0</wp:is_sticky>
+        <wp:attachment_url>${url}</wp:attachment_url>
+    </item>\n`;
+            attachmentId++;
+        }
+    });
+
+    return `<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0"
+    xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+    xmlns:content="http://purl.org/rss/1.0/modules/content/"
+    xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:wp="http://wordpress.org/export/1.2/"
+>
+<channel>
+    <title>Haven BJJ</title>
+    <link>https://havenbjj.nl</link>
+    <description>Haven BJJ Rotterdam Nieuwsbrief Artikelen</description>
+    <language>nl</language>
+    <wp:wxr_version>1.2</wp:wxr_version>
+    <wp:base_site_url>https://havenbjj.nl</wp:base_site_url>
+    <wp:base_blog_url>https://havenbjj.nl</wp:base_blog_url>
+
+    <wp:author>
+        <wp:author_id>1</wp:author_id>
+        <wp:author_login>web2858</wp:author_login>
+        <wp:author_email>info@havenbjj.nl</wp:author_email>
+        <wp:author_display_name><![CDATA[Daniel de Groot]]></wp:author_display_name>
+    </wp:author>
+
+    <wp:category>
+        <wp:term_id>4</wp:term_id>
+        <wp:category_nicename>nieuwsbrief</wp:category_nicename>
+        <wp:category_parent></wp:category_parent>
+        <wp:cat_name><![CDATA[Nieuwsbrief]]></wp:cat_name>
+    </wp:category>
+
+${items}
+</channel>
+</rss>`;
+}

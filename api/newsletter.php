@@ -386,6 +386,8 @@ try {
         $number = $input['number'] ?? null;
         $subjectNl = $input['subject_nl'] ?? '';
         $subjectEn = $input['subject_en'] ?? '';
+        $previewNl = $input['preview_nl'] ?? '';
+        $previewEn = $input['preview_en'] ?? '';
         $htmlNl = $input['html_nl'] ?? '';
         $htmlEn = $input['html_en'] ?? '';
 
@@ -409,6 +411,7 @@ try {
             ],
             'settings' => [
                 'subject_line' => $subjectNl,
+                'preview_text' => $previewNl,
                 'title' => 'Nieuwsbrief #' . $number . ' NL',
                 'from_name' => NEWSLETTER_FROM_NAME,
                 'reply_to' => NEWSLETTER_REPLY_TO,
@@ -439,6 +442,7 @@ try {
             ],
             'settings' => [
                 'subject_line' => $subjectEn,
+                'preview_text' => $previewEn,
                 'title' => 'Nieuwsbrief #' . $number . ' ENG',
                 'from_name' => NEWSLETTER_FROM_NAME,
                 'reply_to' => NEWSLETTER_REPLY_TO,
@@ -459,6 +463,83 @@ try {
             'nl_url' => 'https://us13.admin.mailchimp.com/campaigns/edit?id=' . $nlWebId,
             'en_url' => 'https://us13.admin.mailchimp.com/campaigns/edit?id=' . $enWebId,
         ]);
+        exit;
+    }
+
+    // === SECTIONS: Extract sections from newsletter HTML ===
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'sections') {
+        $html = $input['html'] ?? '';
+        if (empty($html)) throw new Exception('Geen HTML ontvangen');
+
+        // Split on H1 tags
+        preg_match_all('/<h1[^>]*>(.*?)<\/h1>/si', $html, $matches, PREG_OFFSET_CAPTURE);
+
+        if (empty($matches[0])) {
+            echo json_encode(['sections' => []]);
+            exit;
+        }
+
+        $skipPatterns = ['/Nieuwsbrief Haven BJJ #\d+/i', '/Tot snel op de mat/i'];
+        $sections = [];
+
+        for ($i = 0; $i < count($matches[0]); $i++) {
+            $titleHtml = $matches[1][$i][0];
+            $title = trim(strip_tags($titleHtml));
+            $title = html_entity_decode($title, ENT_QUOTES, 'UTF-8');
+
+            $start = $matches[0][$i][1];
+            $end = ($i + 1 < count($matches[0])) ? $matches[0][$i + 1][1] : strlen($html);
+            $sectionHtml = substr($html, $start, $end - $start);
+
+            // Skip patterns
+            $skip = false;
+            foreach ($skipPatterns as $pattern) {
+                if (preg_match($pattern, $title)) { $skip = true; break; }
+            }
+
+            // Skip short sections (< 4 sentences)
+            $plainText = trim(preg_replace('/\s+/', ' ', strip_tags($sectionHtml)));
+            $sentences = preg_split('/[.!?]+/', $plainText);
+            $sentences = array_filter($sentences, fn($s) => strlen(trim($s)) > 10);
+            if (count($sentences) < 4) $skip = true;
+
+            $sections[] = [
+                'title' => $title,
+                'html' => $sectionHtml,
+                'skip' => $skip,
+            ];
+        }
+
+        echo json_encode(['sections' => $sections]);
+        exit;
+    }
+
+    // === BLOG-CLEAN: Clean email HTML to blog HTML via Claude ===
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'blog-clean') {
+        $sectionHtml = $input['html'] ?? '';
+        $sectionTitle = $input['title'] ?? '';
+        if (empty($sectionHtml)) throw new Exception('Geen HTML ontvangen');
+
+        $prompt = "Converteer de volgende Mailchimp email-HTML sectie naar schone, leesbare HTML geschikt voor een WordPress blogpost.\n\n"
+            . "REGELS:\n"
+            . "- Verwijder ALLE email-specifieke HTML: geneste tables, mso-* styles, Mailchimp merge tags, preheader tekst, tracking pixels\n"
+            . "- Behoud de tekstinhoud, afbeeldingen (img tags met src URLs), en links\n"
+            . "- Gebruik semantische HTML: <h2>, <p>, <ul>, <ol>, <img>, <a>, <strong>, <em>\n"
+            . "- Gebruik GEEN inline styles, geen classes, geen divs tenzij nodig\n"
+            . "- Afbeeldingen: behoud de originele src URL, voeg alt tekst toe als die ontbreekt\n"
+            . "- Begin NIET met een H1 tag (de titel wordt apart toegevoegd door WordPress)\n"
+            . "- Begin je antwoord direct met de eerste HTML tag, geen uitleg\n\n"
+            . "Sectie titel: " . $sectionTitle . "\n\n"
+            . "Email-HTML:\n" . $sectionHtml;
+
+        $cleanHtml = claude_request($prompt);
+
+        // Add author footer if not present
+        if (strpos($cleanHtml, 'Geschreven door Daniel de Groot') === false) {
+            $cleanHtml = rtrim($cleanHtml) . "\n\n<p><em>Geschreven door Daniel de Groot, 1e graads zwarte band en headcoach bij Haven BJJ</em></p>";
+        }
+
+        echo json_encode(['html' => $cleanHtml]);
         exit;
     }
 
