@@ -2444,11 +2444,11 @@ function renderUploadPreview(ym) {
         return val.toString().slice(0, 7);
     }
 
-    // Subscription classification
+    // Subscription classification — only real paying memberships
     const REAL_MEMBERSHIP_TYPES = [
         'monthly membership', 'yearly membership', 'yearly membership student',
         'yearly membership under 18', 'monthly membership student', 'monthly membership under 18',
-        'yearly membership founding member student / under 18', 'sponsored membership'
+        'yearly membership founding member', 'yearly membership founding member student / under 18'
     ];
     const TRIAL_ADULT_TYPES = ['free trial', 'free trial advanced', 'free trial women'];
     const TRIAL_U18_TYPES = ['trial week kids'];
@@ -2486,15 +2486,17 @@ function renderUploadPreview(ym) {
     if (uploadState.gribVerloren) {
         const rows = uploadState.gribVerloren.type === 'xlsx' ? uploadState.gribVerloren.rows : csvToRows(uploadState.gribVerloren.text);
         // Filter on endDate matching selected month AND real memberships only
-        const filtered = rows.filter(row => {
+        const monthRows = rows.filter(row => {
             const d = row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? '';
-            return toYM(d) === ym && isRealMembership(row);
+            return toYM(d) === ym;
         });
-        // DEBUG: store subscription types being counted
+        const realLost = monthRows.filter(r => REAL_MEMBERSHIP_TYPES.includes(getSubType(r)));
+
+        // DEBUG
         const debugVerl = {};
-        filtered.forEach(r => { const s = r['subscription'] || '?'; debugVerl[s] = (debugVerl[s] || 0) + 1; });
-        window._debugGribVerloren = { month: ym, total: filtered.length, types: debugVerl };
-        gribVerloren = { lost: filtered.length, lost_members: filtered.length };
+        monthRows.forEach(r => { const s = r['subscription'] || '?'; debugVerl[s] = (debugVerl[s] || 0) + 1; });
+        window._debugGribVerloren = { month: ym, realLost: realLost.length, allTypes: debugVerl };
+        gribVerloren = { lost: realLost.length, lost_members: realLost.length };
     }
 
     function readInt(id) { const v = document.getElementById(id)?.value; return v !== '' && v != null ? parseInt(v, 10) : null; }
