@@ -35,7 +35,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=29">
+    <link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -1439,11 +1439,19 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
                     <!-- Right sidebar -->
                     <div class="rooster-sidebar" id="roosterSidebar">
-                        <!-- Afwezigheid section -->
-                        <div class="rooster-sidebar-section">
-                            <h3 class="rooster-sidebar-title">Afwezigheid</h3>
-                            <p class="rooster-sidebar-hint">Voer afwezige dagen in (bijv. "3 en 7" of "5, 12, 19")</p>
-                            <div id="roosterAbsenceList"></div>
+                        <!-- AI Chat section -->
+                        <div class="rooster-sidebar-section rooster-sidebar-chat" id="roosterSidebarChat" style="display:none;">
+                            <h3 class="rooster-sidebar-title">🤖 AI Assistent</h3>
+                            <div class="rooster-chat-messages" id="roosterChatMessages">
+                                <div class="rooster-chat-msg rooster-chat-ai">
+                                    Hoi! Vertel me wat je wilt wijzigen, bijv:<br>
+                                    <em>"Daniel geeft dinsdag en donderdag Evening 1"</em>
+                                </div>
+                            </div>
+                            <div class="rooster-chat-input-row">
+                                <input type="text" id="roosterChatInput" placeholder="Typ een instructie..." class="rooster-chat-input">
+                                <button id="roosterChatSend" class="rooster-chat-send">➤</button>
+                            </div>
                         </div>
 
                         <!-- Acties section -->
@@ -1474,24 +1482,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 </div>
             </div>
 
-            <!-- AI Chat Widget -->
-            <div class="rooster-chat-toggle" id="roosterChatToggle" title="AI Assistent" style="display:none;">💬</div>
-            <div class="rooster-chat" id="roosterChat" style="display:none;">
-                <div class="rooster-chat-header">
-                    <span>🤖 Rooster Assistent</span>
-                    <button class="rooster-chat-close" id="roosterChatClose">&times;</button>
-                </div>
-                <div class="rooster-chat-messages" id="roosterChatMessages">
-                    <div class="rooster-chat-msg rooster-chat-ai">
-                        Hoi! Ik kan je helpen met het aanpassen van het rooster. Vertel me wat je wilt wijzigen, bijvoorbeeld:<br><br>
-                        <em>"Daniel geeft op dinsdag en donderdag Evening 1, Joran neemt Evening 2 over"</em>
-                    </div>
-                </div>
-                <div class="rooster-chat-input-row">
-                    <input type="text" id="roosterChatInput" placeholder="Typ een instructie..." class="rooster-chat-input">
-                    <button id="roosterChatSend" class="rooster-chat-send">➤</button>
-                </div>
-            </div>
 
         </div><!-- /pageRooster -->
 
@@ -1577,6 +1567,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         PAGES: <?= json_encode(NOTION_PAGES) ?>
     };
     </script>
-    <script src="dashboard.js?v=29"></script>
+    <script src="dashboard.js?v=30"></script>
 </body>
 </html>

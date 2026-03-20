@@ -56,18 +56,6 @@ document.querySelectorAll('.nav-link').forEach(link => {
         document.querySelector('.page-title').textContent = PAGE_TITLES[page] || page;
         currentPage = page;
         document.getElementById('btnPdfRapport').style.display = (page === 'dashboard') ? 'inline-flex' : 'none';
-        // Show/hide rooster chat toggle based on page
-        const chatToggle = document.getElementById('roosterChatToggle');
-        const chatPanel = document.getElementById('roosterChat');
-        if (chatToggle) {
-            if (page === 'rooster') {
-                // Only show toggle if chat panel is hidden
-                if (chatPanel && chatPanel.style.display === 'none') chatToggle.style.display = '';
-            } else {
-                chatToggle.style.display = 'none';
-                if (chatPanel) chatPanel.style.display = 'none';
-            }
-        }
         updateCurrentPage();
         closeSidebar();
     });
@@ -3943,6 +3931,8 @@ function roosterShowWorkspace() {
     document.getElementById('roosterWorkspace').style.display = '';
     document.getElementById('roosterLoading').style.display = 'none';
     document.getElementById('roosterError').style.display = 'none';
+    const sidebarChat = document.getElementById('roosterSidebarChat');
+    if (sidebarChat) sidebarChat.style.display = '';
 }
 
 // --- Load from Notion ---
@@ -4833,28 +4823,14 @@ document.getElementById('roosterSendNotion')?.addEventListener('click', () => {
 
 // --- ROOSTER AI CHAT ---
 (function roosterChatInit() {
-    const roosterChatToggle = document.getElementById('roosterChatToggle');
-    const roosterChat = document.getElementById('roosterChat');
     const roosterChatMessages = document.getElementById('roosterChatMessages');
     const roosterChatInput = document.getElementById('roosterChatInput');
     const roosterChatSendBtn = document.getElementById('roosterChatSend');
-    const roosterChatCloseBtn = document.getElementById('roosterChatClose');
 
-    if (!roosterChatToggle || !roosterChat) return;
+    if (!roosterChatMessages || !roosterChatInput) return;
 
     // Conversation history for context
     let chatHistory = [];
-
-    roosterChatToggle.addEventListener('click', () => {
-        roosterChat.style.display = '';
-        roosterChatToggle.style.display = 'none';
-        roosterChatInput?.focus();
-    });
-
-    roosterChatCloseBtn?.addEventListener('click', () => {
-        roosterChat.style.display = 'none';
-        roosterChatToggle.style.display = '';
-    });
 
     function roosterChatAddMsg(text, type) {
         const div = document.createElement('div');
