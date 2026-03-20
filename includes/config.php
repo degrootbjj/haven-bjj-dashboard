@@ -3,7 +3,7 @@
 // ⚠️ Change these values for each installation!
 
 // All available pages in the dashboard
-define('ALL_PAGES', ['dashboard', 'leden', 'financien', 'lessen', 'marketing', 'nieuwsbrief', 'mailnewsletter', 'uploads', 'simulator', 'rooster', 'gyminfo']);
+define('ALL_PAGES', ['dashboard', 'leden', 'financien', 'marketing', 'nieuwsbrief', 'mailnewsletter', 'uploads', 'simulator', 'rooster', 'gyminfo']);
 
 // User accounts: loaded from data/users.json (editable via Account page)
 // Format: { "username": { "password": "hash", "role": "admin|user", "pages": [...] } }

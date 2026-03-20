@@ -41,7 +41,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', lessen: 'Lessen', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', mailnewsletter: 'Newsletter', uploads: 'Uploads', simulator: 'Prijssimulator', rooster: 'Rooster', gyminfo: 'Gym Info', account: 'Account' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', mailnewsletter: 'Newsletter', uploads: 'Uploads', simulator: 'Prijssimulator', rooster: 'Rooster', gyminfo: 'Gym Info', account: 'Account' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -58,6 +58,9 @@ document.querySelectorAll('.nav-link').forEach(link => {
         document.querySelector('.page-title').textContent = PAGE_TITLES[page] || page;
         currentPage = page;
         document.getElementById('btnPdfRapport').style.display = (page === 'dashboard') ? 'inline-flex' : 'none';
+        // Hide month selector on pages that don't use it
+        const hideMonthPages = ['mailnewsletter', 'rooster', 'gyminfo', 'account', 'nieuwsbrief'];
+        document.getElementById('monthSelect').style.display = hideMonthPages.includes(page) ? 'none' : '';
         updateCurrentPage();
         closeSidebar();
     });
