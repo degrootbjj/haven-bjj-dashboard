@@ -2149,6 +2149,216 @@ body {
 }
 
 /* ============================================
+   Coach Dashboard — Mijn Lessen
+   ============================================ */
+
+.cd-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.cd-empty p {
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 24px;
+    text-align: center;
+}
+
+.cd-empty-text {
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 16px 0;
+}
+
+.cd-month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.cd-month-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    min-width: 180px;
+    text-align: center;
+    text-transform: capitalize;
+}
+
+/* Hours summary cards */
+.cd-hours-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.cd-hours-card {
+    flex: 1;
+    max-width: 200px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+.cd-hours-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1.1;
+}
+
+.cd-hours-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+/* Cards */
+.cd-card {
+    margin-bottom: 20px;
+    padding: 24px;
+}
+
+.cd-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+}
+
+/* Schedule */
+.cd-week {
+    margin-bottom: 20px;
+}
+
+.cd-week-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+.cd-day-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    transition: background 0.1s;
+}
+
+.cd-day-row:hover {
+    background: var(--bg);
+}
+
+.cd-day-info {
+    min-width: 130px;
+}
+
+.cd-day-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    display: block;
+}
+
+.cd-day-date {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.cd-day-slots {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.cd-slot-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.cd-slot-morning { background: #fef3c7; color: #92400e; }
+.cd-slot-noon { background: #fed7aa; color: #9a3412; }
+.cd-slot-kids { background: #dbeafe; color: #1e40af; }
+.cd-slot-fundamentals { background: #d1fae5; color: #065f46; }
+.cd-slot-evening1 { background: #e0e7ff; color: #3730a3; }
+.cd-slot-evening2 { background: #ede9fe; color: #5b21b6; }
+
+.cd-day-hours {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 35px;
+    text-align: right;
+}
+
+/* Themes grid */
+.cd-themes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.cd-theme-item {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.cd-theme-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+}
+
+.cd-theme-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+@media (max-width: 768px) {
+    .cd-hours-card {
+        max-width: none;
+    }
+    .cd-day-row {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .cd-day-info {
+        min-width: 100px;
+    }
+    .cd-themes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
    Rooster Tool — Workspace Styles
    ============================================ */
 

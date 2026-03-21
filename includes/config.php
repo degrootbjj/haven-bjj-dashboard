@@ -3,7 +3,7 @@
 // ⚠️ Change these values for each installation!
 
 // All available pages in the dashboard
-define('ALL_PAGES', ['dashboard', 'leden', 'financien', 'marketing', 'nieuwsbrief', 'mailnewsletter', 'uploads', 'simulator', 'rooster', 'gyminfo']);
+define('ALL_PAGES', ['dashboard', 'leden', 'financien', 'marketing', 'nieuwsbrief', 'mailnewsletter', 'uploads', 'simulator', 'rooster', 'gyminfo', 'coachdashboard']);
 
 // User accounts: loaded from data/users.json (editable via Account page)
 // Format: { "username": { "password": "hash", "role": "admin|user", "pages": [...] } }
@@ -25,7 +25,7 @@ if (!defined('USERS')) {
         'savage' => [
             'password' => '$2y$12$eh4MfM3W.5tUXRckUPqq.u9JvGg1Vpm1r2.bjOuj1jCNvc7opupHC',
             'role' => 'user',
-            'pages' => ['dashboard', 'leden', 'rooster'],
+            'pages' => ['dashboard', 'leden', 'rooster', 'coachdashboard'],
         ],
     ]);
 }

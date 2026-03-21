@@ -41,7 +41,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // --- Nav Links & Page Switching ---
 let currentPage = 'dashboard';
-const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', nieuwsbrief: 'Crew Briefing', mailnewsletter: 'Newsletter', uploads: 'Uploads', simulator: 'Prijssimulator', rooster: 'Rooster', gyminfo: 'Gym Info', account: 'Account' };
+const PAGE_TITLES = { dashboard: 'Dashboard', leden: 'Leden', financien: 'Financiën', marketing: 'Marketing', coachdashboard: 'Mijn Lessen', nieuwsbrief: 'Crew Briefing', mailnewsletter: 'Newsletter', uploads: 'Uploads', simulator: 'Prijssimulator', rooster: 'Rooster', gyminfo: 'Gym Info', account: 'Account' };
 
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -59,7 +59,7 @@ document.querySelectorAll('.nav-link').forEach(link => {
         currentPage = page;
         document.getElementById('btnPdfRapport').style.display = (page === 'dashboard') ? 'inline-flex' : 'none';
         // Hide month selector on pages that don't use it
-        const hideMonthPages = ['mailnewsletter', 'rooster', 'gyminfo', 'account', 'nieuwsbrief'];
+        const hideMonthPages = ['mailnewsletter', 'rooster', 'gyminfo', 'account', 'nieuwsbrief', 'coachdashboard'];
         document.getElementById('monthSelect').style.display = hideMonthPages.includes(page) ? 'none' : '';
         updateCurrentPage();
         closeSidebar();
@@ -75,6 +75,7 @@ function updateCurrentPage() {
     else if (currentPage === 'nieuwsbrief') updateNieuwsbrief();
     else if (currentPage === 'uploads') updateUploads(ym);
     else if (currentPage === 'simulator') updateSimulator(ym);
+    else if (currentPage === 'coachdashboard') updateCoachDashboard();
     else if (currentPage === 'rooster') { /* rooster has its own flow */ }
     else if (currentPage === 'gyminfo') loadGymInfo();
     else if (currentPage === 'account') { /* static page, no data update needed */ }
@@ -3921,6 +3922,227 @@ function nlGenerateWXR(articles) {
 ${items}
 </channel>
 </rss>`;
+}
+
+// ============================================
+// COACH DASHBOARD — Mijn Lessen
+// ============================================
+
+const CD_SLOT_HOURS = { 'Morning': 1.5, 'Noon': 1, 'Kids': 1, 'Fundamentals': 1, 'Evening 1': 1.5, 'Evening 2': 1 };
+const CD_MONTHS_NL = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+const CD_DAYS_NL = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+const CD_DAYS_SHORT = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
+
+let cdMonth = null;
+let cdYear = null;
+let cdData = null; // loaded rooster draft
+
+(function cdInit() {
+    const now = new Date();
+    cdMonth = now.getMonth() + 1;
+    cdYear = now.getFullYear();
+
+    document.getElementById('cdPrevMonth')?.addEventListener('click', () => { cdChangeMonth(-1); });
+    document.getElementById('cdNextMonth')?.addEventListener('click', () => { cdChangeMonth(1); });
+})();
+
+function cdChangeMonth(dir) {
+    cdMonth += dir;
+    if (cdMonth > 12) { cdMonth = 1; cdYear++; }
+    if (cdMonth < 1) { cdMonth = 12; cdYear--; }
+    updateCoachDashboard();
+}
+
+function cdGetCoachName() {
+    if (typeof USER_CONFIG === 'undefined') return 'Daniel';
+    const u = USER_CONFIG.username;
+    // Map usernames to known coach display names
+    const nameMap = {};
+    ROOSTER_KNOWN_COACHES.forEach(n => { nameMap[n.toLowerCase().replace(/[\s.]/g, '')] = n; });
+    // Direct match
+    if (nameMap[u]) return nameMap[u];
+    // ucfirst match
+    const uc = u.charAt(0).toUpperCase() + u.slice(1);
+    if (ROOSTER_KNOWN_COACHES.includes(uc)) return uc;
+    return uc;
+}
+
+async function updateCoachDashboard() {
+    const loading = document.getElementById('cdLoading');
+    const empty = document.getElementById('cdEmpty');
+    const content = document.getElementById('cdContent');
+    const monthLabel = document.getElementById('cdMonthLabel');
+
+    if (!loading || !content) return;
+
+    const monthKey = cdYear + '-' + String(cdMonth).padStart(2, '0');
+    monthLabel.textContent = CD_MONTHS_NL[cdMonth - 1] + ' ' + cdYear;
+
+    loading.style.display = 'flex';
+    empty.style.display = 'none';
+    content.style.display = 'none';
+
+    try {
+        // Load rooster draft
+        const resp = await fetch('api/rooster.php?action=load&month=' + monthKey);
+        if (!resp.ok) throw new Error('Laden mislukt');
+        const result = await resp.json();
+
+        if (!result.data) {
+            loading.style.display = 'none';
+            empty.style.display = '';
+            content.style.display = '';
+            // Still show month nav
+            document.getElementById('cdHoursRow').style.display = 'none';
+            document.getElementById('cdThemesCard').style.display = 'none';
+            document.getElementById('cdScheduleContent').innerHTML = '<p class="cd-empty-text">Er is nog geen rooster voor deze maand.</p>';
+            return;
+        }
+
+        cdData = result.data;
+        loading.style.display = 'none';
+        content.style.display = '';
+        document.getElementById('cdHoursRow').style.display = '';
+
+        const coachName = cdGetCoachName();
+        cdRenderSchedule(coachName);
+        cdRenderHours(coachName);
+        await cdRenderThemes();
+
+    } catch (err) {
+        loading.style.display = 'none';
+        empty.style.display = '';
+        empty.querySelector('p').textContent = 'Kon rooster niet laden: ' + err.message;
+    }
+}
+
+function cdRenderSchedule(coachName) {
+    const wrap = document.getElementById('cdScheduleContent');
+    if (!cdData || !cdData.coaches) { wrap.innerHTML = '<p class="cd-empty-text">Geen data.</p>'; return; }
+
+    // Collect all dates where this coach is scheduled
+    const myLessons = []; // { date, slot, dateObj }
+    for (const [dateStr, slots] of Object.entries(cdData.coaches)) {
+        for (const [slot, name] of Object.entries(slots)) {
+            if (name && name.toLowerCase() === coachName.toLowerCase()) {
+                myLessons.push({ date: dateStr, slot, dateObj: new Date(dateStr + 'T00:00:00') });
+            }
+        }
+    }
+
+    if (myLessons.length === 0) {
+        wrap.innerHTML = '<p class="cd-empty-text">Je bent deze maand niet ingepland.</p>';
+        return;
+    }
+
+    // Sort by date
+    myLessons.sort((a, b) => a.dateObj - b.dateObj);
+
+    // Group by week (ISO week starting Monday)
+    const weeks = [];
+    let currentWeek = [];
+    let lastMondayStr = null;
+    for (const lesson of myLessons) {
+        const d = lesson.dateObj;
+        const monday = new Date(d);
+        monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        const mStr = monday.toISOString().slice(0, 10);
+        if (lastMondayStr !== null && mStr !== lastMondayStr) {
+            weeks.push(currentWeek);
+            currentWeek = [];
+        }
+        currentWeek.push(lesson);
+        lastMondayStr = mStr;
+    }
+    if (currentWeek.length > 0) weeks.push(currentWeek);
+
+    let html = '';
+    weeks.forEach((weekLessons, wi) => {
+        // Group by date within the week
+        const byDate = {};
+        for (const l of weekLessons) {
+            if (!byDate[l.date]) byDate[l.date] = [];
+            byDate[l.date].push(l);
+        }
+
+        html += `<div class="cd-week">`;
+        html += `<div class="cd-week-title">Week ${wi + 1}</div>`;
+
+        for (const [dateStr, lessons] of Object.entries(byDate)) {
+            const d = new Date(dateStr + 'T00:00:00');
+            const dayName = CD_DAYS_NL[d.getDay()];
+            const dateLabel = d.getDate() + ' ' + CD_MONTHS_NL[d.getMonth()];
+            const hours = lessons.reduce((sum, l) => sum + (CD_SLOT_HOURS[l.slot] || 1), 0);
+
+            html += `<div class="cd-day-row">
+                <div class="cd-day-info">
+                    <span class="cd-day-name">${dayName}</span>
+                    <span class="cd-day-date">${dateLabel}</span>
+                </div>
+                <div class="cd-day-slots">
+                    ${lessons.map(l => `<span class="cd-slot-chip cd-slot-${l.slot.toLowerCase().replace(/\s+/g, '')}">${l.slot}</span>`).join('')}
+                </div>
+                <div class="cd-day-hours">${hours}u</div>
+            </div>`;
+        }
+        html += `</div>`;
+    });
+
+    wrap.innerHTML = html;
+}
+
+function cdRenderHours(coachName) {
+    if (!cdData || !cdData.coaches) return;
+
+    let totalLessons = 0;
+    let totalHours = 0;
+
+    for (const [dateStr, slots] of Object.entries(cdData.coaches)) {
+        for (const [slot, name] of Object.entries(slots)) {
+            if (name && name.toLowerCase() === coachName.toLowerCase()) {
+                totalLessons++;
+                totalHours += (CD_SLOT_HOURS[slot] || 1);
+            }
+        }
+    }
+
+    document.getElementById('cdTotalLessons').textContent = totalLessons;
+    document.getElementById('cdTotalHours').textContent = totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1);
+}
+
+async function cdRenderThemes() {
+    const card = document.getElementById('cdThemesCard');
+    const content = document.getElementById('cdThemesContent');
+
+    // Reuse Notion data from Crew Briefing
+    try {
+        if (!nbDataLoaded) {
+            await nbFetchAllData();
+        }
+
+        const monday = nbGetWeekMonday(0); // this week
+        const theme = nbFindThemeForWeek(monday);
+
+        if (!theme) {
+            card.style.display = 'none';
+            return;
+        }
+
+        card.style.display = '';
+        const cols = NB_THEME_COLS.slice(1); // skip 'Week' column
+        let html = '<div class="cd-themes-grid">';
+        for (let i = 0; i < cols.length && i < theme.cols.length; i++) {
+            if (!theme.cols[i]) continue;
+            html += `<div class="cd-theme-item">
+                <div class="cd-theme-label">${cols[i]}</div>
+                <div class="cd-theme-value">${theme.cols[i]}</div>
+            </div>`;
+        }
+        html += '</div>';
+        content.innerHTML = html;
+    } catch (err) {
+        card.style.display = 'none';
+    }
 }
 
 // ============================================
