@@ -2202,26 +2202,24 @@ function nbGeneratePreview(theme, coachWeek, balieWeek, monday) {
     sun.setDate(monday.getDate() + 6);
     const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
-    let html = `<h3>Haven BJJ — Weekupdate</h3>`;
+    let html = `<h3>Coach & Desk Briefing</h3>`;
     html += `<p>Week ${nbGetISOWeek(monday)} | ${monday.getDate()} t/m ${sun.getDate()} ${months[monday.getMonth()]} ${monday.getFullYear()}</p>`;
 
     html += `<hr class="nb-section-divider">`;
     html += `<h3>Desk Announcement</h3>`;
-    html += `<p style="color:#64748b;font-style:italic;">Important for the desk</p>`;
+    html += `<p style="color:#000;">Important for the desk</p>`;
 
     html += `<hr class="nb-section-divider">`;
     html += `<h3>Coaches Announcement</h3>`;
-    html += `<p style="color:#64748b;font-style:italic;">Important for the coaches</p>`;
+    html += `<p style="color:#000;">Important for the coaches</p>`;
 
     if (theme) {
         html += `<hr class="nb-section-divider">`;
         html += `<h3>Thema's van de Week</h3>`;
         const labels = NB_THEME_COLS.slice(1);
-        html += '<table style="border-collapse:collapse;font-family:Inter,sans-serif;font-size:13px;">';
         theme.cols.forEach((val, i) => {
-            if (val) html += `<tr><td style="padding:4px 12px 4px 0;font-weight:600;color:#64748b;">${labels[i] || 'Slot ' + (i+1)}</td><td style="padding:4px 0;">${val}</td></tr>`;
+            if (val) html += `<p style="margin:2px 0;"><strong>${labels[i] || 'Slot ' + (i+1)}:</strong> ${val}</p>`;
         });
-        html += '</table>';
     }
 
     if (coachWeek && coachWeek.length > 2) {
@@ -2245,7 +2243,7 @@ function nbGeneratePreview(theme, coachWeek, balieWeek, monday) {
 
         html += `<hr class="nb-section-divider">`;
         html += `<h3>Example of a Mixed Class</h3>`;
-        html += `<p>${mixedStanding} 1: Show how to defend and counter the front headlock position<br>`;
+        html += `<p>${mixedStanding} 1:<br>`;
         html += `${mixedMain} 1:<br>`;
         html += `${mixedMain} 2:<br>`;
         html += `${mixedMain} 3:</p>`;
