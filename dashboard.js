@@ -258,9 +258,9 @@ function updateDashboard(ym) {
     // Subtitle
     document.querySelector('.page-subtitle').textContent = 'Haven BJJ — ' + monthName + ' ' + year;
 
-    // KPI: Actieve Leden
-    const totalLeden = d.total_6cat || d.total_members_excel || 0;
-    const prevLeden = pd ? (pd.total_6cat || pd.total_members_excel || 0) : null;
+    // KPI: Actieve Leden (use active_6cat which excludes members ending this month)
+    const totalLeden = d.active_6cat || d.total_6cat || d.total_members_excel || 0;
+    const prevLeden = pd ? (pd.active_6cat || pd.total_6cat || pd.total_members_excel || 0) : null;
     document.getElementById('kpiLeden').textContent = fmt(totalLeden);
     const ledenDiff = prevLeden != null ? totalLeden - prevLeden : null;
     setChange(document.getElementById('kpiLedenChange'), ledenDiff,
@@ -2504,12 +2504,6 @@ function renderUploadPreview(ym) {
         jortt = parseJorttCSV(uploadState.jortt.text);
     }
 
-    let gribLeden = null;
-    if (uploadState.gribLeden) {
-        const data = uploadState.gribLeden.type === 'xlsx' ? uploadState.gribLeden.rows : csvToRows(uploadState.gribLeden.text);
-        gribLeden = parseGribLeden(data);
-    }
-
     // Helper: convert Excel date (serial number, Date object, or string) to "YYYY-MM" string
     function toYM(val) {
         if (!val && val !== 0) return '';
@@ -2520,6 +2514,12 @@ function renderUploadPreview(ym) {
             return d.toISOString().slice(0, 7);
         }
         return val.toString().slice(0, 7);
+    }
+
+    let gribLeden = null;
+    if (uploadState.gribLeden) {
+        const data = uploadState.gribLeden.type === 'xlsx' ? uploadState.gribLeden.rows : csvToRows(uploadState.gribLeden.text);
+        gribLeden = parseGribLeden(data, ym, toYM);
     }
 
     // Subscription classification — only real paying memberships
@@ -2584,8 +2584,8 @@ function renderUploadPreview(ym) {
     const sessions = readInt('inputSessions');
     const participants = readInt('inputParticipants');
 
-    // Build the entry
-    const totalMembers = gribLeden?.total_members || null;
+    // Build the entry — use active_6cat (excludes members ending this month)
+    const totalMembers = gribLeden?.active_6cat || gribLeden?.total_6cat || gribLeden?.total_members || null;
     const trials = gribTrialsAdults || null;
     const lost = gribVerloren?.lost || null;
     const newMembers = gribNieuw?.new_members || null;
@@ -2645,6 +2645,8 @@ function renderUploadPreview(ym) {
         entry.categories = gribLeden.categories;
         entry.total_real = gribLeden.total_real;
         entry.total_6cat = gribLeden.total_6cat;
+        entry.active_6cat = gribLeden.active_6cat;
+        entry.ending_this_month = gribLeden.ending_this_month;
         entry.overig = gribLeden.overig;
     }
 
@@ -2761,29 +2763,42 @@ function parseJorttCSV(text) {
 
 // Grib leden parser — handles both XLSX rows and CSV text
 // Column: naam_abonnement with English membership names
-function parseGribLeden(data) {
+function parseGribLeden(data, ym, toYM) {
     const rows = Array.isArray(data) ? data : csvToRows(data);
     const catMap = { 'Yearly': 0, 'Monthly': 0, 'Yearly Student': 0, 'Monthly Student': 0, 'Yearly U18': 0, 'Monthly U18': 0 };
 
+    // Count members ending this month (to subtract from active count)
+    let endingThisMonth = 0;
+
     rows.forEach(row => {
         const sub = (row['naam_abonnement'] || row['Abonnement'] || row['Subscription'] || row['Type'] || '').toString().toLowerCase();
-        if (!sub) return; // Skip rows without subscription (e.g. strippenkaart only)
+        if (!sub) return;
+
+        // Check if this member's subscription ends in the selected month
+        const endVal = row['einddatum'] ?? row['Einddatum'] ?? row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? row['end_date'] ?? row['End Date'] ?? '';
+        const endsThisMonth = ym && toYM && endVal && toYM(endVal) === ym;
 
         const isMonthly = sub.includes('monthly') || sub.includes('maand');
         const isU18 = sub.includes('under 18') || sub.includes('u18');
         const isStudent = sub.includes('student');
 
-        // Priority: U18 > Student > Regular. "Founding Member Student / Under 18" → U18
+        let is6cat = false;
         if (isU18) {
             catMap[isMonthly ? 'Monthly U18' : 'Yearly U18']++;
+            is6cat = true;
         } else if (isStudent) {
             catMap[isMonthly ? 'Monthly Student' : 'Yearly Student']++;
+            is6cat = true;
         } else if (isMonthly) {
             catMap['Monthly']++;
+            is6cat = true;
         } else if (sub.includes('yearly') || sub.includes('jaar') || sub.includes('membership')) {
             catMap['Yearly']++;
+            is6cat = true;
         }
-        // Sponsored, Single Class, etc. → not counted in 6 categories → goes to Overig
+
+        // Only count ending members that are real memberships (6 categories)
+        if (endsThisMonth && is6cat) endingThisMonth++;
     });
 
     const total6cat = Object.values(catMap).reduce((a, b) => a + b, 0);
@@ -2794,6 +2809,8 @@ function parseGribLeden(data) {
         categories: { ...catMap, 'Overig': overig },
         total_real: rows.length,
         total_6cat: total6cat,
+        active_6cat: total6cat - endingThisMonth,
+        ending_this_month: endingThisMonth,
         overig
     };
 }

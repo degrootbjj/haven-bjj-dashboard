@@ -45,7 +45,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=40">
+    <link rel="stylesheet" href="styles.css?v=41">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -132,7 +132,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- KPI Cards -->
         <section class="kpi-grid">
-            <div class="kpi-card" data-tooltip="Totaal actieve leden uit Grib Excel (6 hoofdcategorieën: Yearly, Monthly, Student, U18). Bron: Grib Leden upload.">
+            <div class="kpi-card" data-tooltip="Actieve leden uit Grib Excel (6 categorieën: Yearly, Monthly, Student, U18), minus leden waarvan het abonnement deze maand eindigt. Bron: Grib Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Actieve Leden</span>
                     <div class="kpi-icon blue">
@@ -1630,6 +1630,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         pageLabels: <?= json_encode($pageLabels) ?>
     };
     </script>
-    <script src="dashboard.js?v=40"></script>
+    <script src="dashboard.js?v=41"></script>
 </body>
 </html>
