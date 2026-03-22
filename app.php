@@ -45,7 +45,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=41">
+    <link rel="stylesheet" href="styles.css?v=42">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -1630,6 +1630,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         pageLabels: <?= json_encode($pageLabels) ?>
     };
     </script>
-    <script src="dashboard.js?v=41"></script>
+    <script src="dashboard.js?v=42"></script>
 </body>
 </html>

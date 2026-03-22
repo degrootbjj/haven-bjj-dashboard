@@ -2775,7 +2775,7 @@ function parseGribLeden(data, ym, toYM) {
         if (!sub) return;
 
         // Check if this member's subscription ends in the selected month
-        const endVal = row['einddatum'] ?? row['Einddatum'] ?? row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? row['end_date'] ?? row['End Date'] ?? '';
+        const endVal = row['eind_datum_abonnement'] ?? row['einddatum'] ?? row['Einddatum'] ?? row['endDate'] ?? row['enddate'] ?? row['EndDate'] ?? row['end_date'] ?? row['End Date'] ?? '';
         const endsThisMonth = ym && toYM && endVal && toYM(endVal) === ym;
 
         const isMonthly = sub.includes('monthly') || sub.includes('maand');
