@@ -275,6 +275,19 @@ function updateDashboard(ym) {
         setChange(document.getElementById('kpiAttritionChange'), null, '', false);
     }
 
+    // Helper: extrapolate revenue if month is still in progress
+    function projectRevenue(monthKey, revenue) {
+        if (!revenue) return revenue;
+        const today = new Date();
+        const [y, m] = monthKey.split('-').map(Number);
+        if (y === today.getFullYear() && m === today.getMonth() + 1) {
+            const daysSoFar = today.getDate();
+            const daysInMonth = new Date(y, m, 0).getDate();
+            if (daysSoFar < daysInMonth) return revenue * (daysInMonth / daysSoFar);
+        }
+        return revenue;
+    }
+
     // KPI: Customer LTV = (gem. omzet per lid over 12 maanden) / gem. attrition over 12 maanden
     const allKeys = Object.keys(DASHBOARD_DATA).sort();
     const curIdx = allKeys.indexOf(ym);
@@ -282,7 +295,7 @@ function updateDashboard(ym) {
     let sumOmzetPerLid = 0, countOpl = 0, sumAttr = 0, countAttr = 0;
     t12.forEach(m => {
         const md = DASHBOARD_DATA[m];
-        const mOmzet = (md.jortt && md.jortt.revenue) || md.total_income;
+        const mOmzet = projectRevenue(m, (md.jortt && md.jortt.revenue) || md.total_income);
         const mLeden = md.total_6cat || md.total_members_excel || 0;
         if (mOmzet != null && mLeden > 0) { sumOmzetPerLid += mOmzet / mLeden; countOpl++; }
         if (md.attrition != null && md.attrition > 0) { sumAttr += md.attrition; countAttr++; }
@@ -411,11 +424,13 @@ function updateDashboard(ym) {
         );
     }
 
-    // Income per member
+    // Income per member (projected if current month)
     const ipm = d.income_per_member;
+    const isCurrentMonth = ym === new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+    const ipmSuffix = (isCurrentMonth && ipm != null) ? ' (geschat)' : '';
     kcHtml += activityItem('payment',
         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
-        `Omzet per lid: <strong>${ipm != null ? '€' + ipm.toFixed(2).replace('.', ',') : '—'}</strong>`,
+        `Omzet per lid: <strong>${ipm != null ? '€' + ipm.toFixed(2).replace('.', ',') + ipmSuffix : '—'}</strong>`,
         d.trial_to_member != null ? `Trial-to-member: ${(d.trial_to_member * 100).toFixed(0)}%` : '',
         shortMonth + ' ' + year
     );
@@ -2519,9 +2534,21 @@ function renderUploadPreview(ym) {
     const newMembersExcel = gribNieuw?.new_members_excel || null;
     const totalIncome = jortt?.revenue || null;
 
-    // Calculated fields
+    // Calculated fields — extrapolate revenue if month is still in progress
+    let projectedIncome = totalIncome;
+    if (totalIncome) {
+        const today = new Date();
+        const [selY, selM] = ym.split('-').map(Number);
+        if (selY === today.getFullYear() && selM === today.getMonth() + 1) {
+            const daysSoFar = today.getDate();
+            const daysInMonth = new Date(selY, selM, 0).getDate();
+            if (daysSoFar < daysInMonth) {
+                projectedIncome = totalIncome * (daysInMonth / daysSoFar);
+            }
+        }
+    }
     const trialToMember = (trials && newMembers) ? newMembers / trials : null;
-    const incomePerMember = (totalIncome && totalMembers) ? totalIncome / totalMembers : null;
+    const incomePerMember = (projectedIncome && totalMembers) ? projectedIncome / totalMembers : null;
     const prevMembers = prevData?.total_members;
     const attrition = (lost && prevMembers) ? lost / prevMembers : null;
     const participantsPerSession = (participants && sessions) ? participants / sessions : null;
