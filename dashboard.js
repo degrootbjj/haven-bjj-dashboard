@@ -161,6 +161,12 @@ function createCharts() {
             {
                 label: 'Omzet (€)', data: [], backgroundColor: '#6366f1',
                 borderRadius: 6, borderSkipped: false, barPercentage: 0.5, categoryPercentage: 0.8, yAxisID: 'y',
+                stack: 'revenue',
+            },
+            {
+                label: 'Geschat', data: [], backgroundColor: 'rgba(99, 102, 241, 0.3)',
+                borderRadius: 6, borderSkipped: 'bottom', barPercentage: 0.5, categoryPercentage: 0.8, yAxisID: 'y',
+                stack: 'revenue',
             },
             {
                 label: 'Leden', data: [], type: 'line', borderColor: '#10b981',
@@ -172,13 +178,26 @@ function createCharts() {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, weight: '500' } } },
+                legend: {
+                    position: 'top', align: 'end',
+                    labels: {
+                        usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, weight: '500' },
+                        filter: (item) => item.text !== 'Geschat'
+                    }
+                },
                 tooltip: {
                     backgroundColor: '#0f172a', titleFont: { size: 13, weight: '600' }, bodyFont: { size: 12 }, padding: 12, cornerRadius: 8,
                     callbacks: {
-                        label: ctx => ctx.dataset.yAxisID === 'y1'
-                            ? ctx.dataset.label + ': ' + ctx.raw
-                            : ctx.dataset.label + ': €' + (ctx.raw || 0).toLocaleString('nl-NL')
+                        label: ctx => {
+                            if (ctx.dataset.stack === 'revenue' && ctx.dataset.label === 'Geschat') {
+                                if (!ctx.raw) return null;
+                                const actual = ctx.chart.data.datasets[0].data[ctx.dataIndex] || 0;
+                                return 'Geschat totaal: €' + (actual + ctx.raw).toLocaleString('nl-NL');
+                            }
+                            return ctx.dataset.yAxisID === 'y1'
+                                ? ctx.dataset.label + ': ' + ctx.raw
+                                : ctx.dataset.label + ': €' + (ctx.raw || 0).toLocaleString('nl-NL');
+                        }
                     }
                 }
             },
@@ -339,9 +358,26 @@ function updateDashboard(ym) {
         const md = DASHBOARD_DATA[m];
         return md ? (md.total_6cat || md.total_members_excel || 0) : 0;
     });
+    // Projected revenue: only the extra portion for the current month
+    const projectedData = trailing.map(m => {
+        const [mY, mM] = m.split('-').map(Number);
+        const now = new Date();
+        if (mY === now.getFullYear() && mM === now.getMonth() + 1) {
+            const daysSoFar = now.getDate();
+            const daysInMonth = new Date(mY, mM, 0).getDate();
+            if (daysSoFar < daysInMonth) {
+                const md = DASHBOARD_DATA[m];
+                const rev = md ? Math.round((md.jortt && md.jortt.revenue) || md.total_income || 0) : 0;
+                return Math.round(rev * (daysInMonth / daysSoFar) - rev);
+            }
+        }
+        return 0;
+    });
+
     revenueChart.data.labels = labels;
     revenueChart.data.datasets[0].data = omzetData;
-    revenueChart.data.datasets[1].data = ledenData;
+    revenueChart.data.datasets[1].data = projectedData;
+    revenueChart.data.datasets[2].data = ledenData;
     revenueChart.update();
 
     // Donut chart
@@ -740,8 +776,19 @@ function updateFinancien(ym) {
 
     document.querySelector('.page-subtitle').textContent = 'Haven BJJ — ' + monthName + ' ' + year;
 
-    // KPI: Omzet
+    // KPI: Omzet (with projection for current month)
     document.getElementById('kpiRevenue').textContent = j ? fmtEuro(j.revenue) : '—';
+    const projEl = document.getElementById('kpiRevenueProjected');
+    const today = new Date();
+    const isCurrentMonth = j && parseInt(year) === today.getFullYear() && parseInt(month) === today.getMonth() + 1;
+    if (isCurrentMonth && today.getDate() < new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()) {
+        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        const projected = j.revenue * (daysInMonth / today.getDate());
+        projEl.textContent = '~' + fmtEuro(projected) + ' geschat';
+        projEl.style.display = '';
+    } else {
+        projEl.style.display = 'none';
+    }
     if (j && pj) {
         const pct = ((j.revenue - pj.revenue) / pj.revenue * 100);
         setChange(document.getElementById('kpiRevenueChange'), pct, (pct > 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + '% vs vorige maand', false);

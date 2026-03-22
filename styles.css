@@ -390,6 +390,13 @@ body {
 .kpi-change.positive { color: var(--green); }
 .kpi-change.negative { color: var(--red); }
 
+.kpi-projected {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
 .kpi-split {
     font-size: 12px;
     color: var(--text-muted);
