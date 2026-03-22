@@ -344,12 +344,12 @@ body {
     transform: translateY(-1px);
 }
 
-/* KPI Tooltip */
+/* KPI Tooltip — appears below the card */
 .kpi-card[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     left: 50%;
-    bottom: calc(100% + 10px);
+    top: calc(100% + 10px);
     transform: translateX(-50%);
     background: #0f172a;
     color: #fff;
@@ -373,10 +373,10 @@ body {
     content: '';
     position: absolute;
     left: 50%;
-    bottom: calc(100% + 4px);
+    top: calc(100% + 4px);
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-top-color: #0f172a;
+    border-bottom-color: #0f172a;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.15s, visibility 0.15s;
