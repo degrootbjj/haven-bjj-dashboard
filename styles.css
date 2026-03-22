@@ -336,11 +336,92 @@ body {
     padding: 20px 22px;
     box-shadow: var(--shadow);
     transition: box-shadow 0.2s ease, transform 0.2s ease;
+    position: relative;
 }
 
 .kpi-card:hover {
     box-shadow: var(--shadow-lg);
     transform: translateY(-1px);
+}
+
+/* KPI Tooltip */
+.kpi-card[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.5;
+    padding: 10px 14px;
+    border-radius: 8px;
+    width: max-content;
+    max-width: 280px;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s, visibility 0.15s;
+    z-index: 100;
+    pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.kpi-card[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 4px);
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #0f172a;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s, visibility 0.15s;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.kpi-card[data-tooltip]:hover::after,
+.kpi-card[data-tooltip]:hover::before,
+.kpi-card[data-tooltip].tooltip-active::after,
+.kpi-card[data-tooltip].tooltip-active::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Keep tooltip on screen for cards near edges */
+.kpi-card[data-tooltip]:first-child::after {
+    left: 0;
+    transform: translateX(0);
+}
+.kpi-card[data-tooltip]:first-child::before {
+    left: 30px;
+    transform: translateX(0);
+}
+.kpi-card[data-tooltip]:last-child::after {
+    left: auto;
+    right: 0;
+    transform: translateX(0);
+}
+.kpi-card[data-tooltip]:last-child::before {
+    left: auto;
+    right: 30px;
+    transform: translateX(0);
+}
+
+@media (max-width: 768px) {
+    .kpi-card[data-tooltip]::after {
+        left: 0;
+        transform: none;
+        max-width: 240px;
+    }
+    .kpi-card[data-tooltip]:last-child::after {
+        left: auto;
+        right: 0;
+    }
 }
 
 .kpi-header {

@@ -5,6 +5,17 @@
 // --- CSRF Token ---
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
+// --- KPI Tooltip (mobile tap support) ---
+document.addEventListener('click', (e) => {
+    const card = e.target.closest('.kpi-card[data-tooltip]');
+    // Close all other tooltips
+    document.querySelectorAll('.kpi-card.tooltip-active').forEach(el => {
+        if (el !== card) el.classList.remove('tooltip-active');
+    });
+    // Toggle clicked card
+    if (card) card.classList.toggle('tooltip-active');
+});
+
 // --- Data (loaded from API) ---
 let DASHBOARD_DATA = {};
 let MAILCHIMP_DATA = {};

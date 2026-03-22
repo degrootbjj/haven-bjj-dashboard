@@ -45,7 +45,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=38">
+    <link rel="stylesheet" href="styles.css?v=39">
 </head>
 <body>
     <!-- Sidebar / Mobile Nav -->
@@ -132,7 +132,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- KPI Cards -->
         <section class="kpi-grid">
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totaal actieve leden uit Grib Excel (6 hoofdcategorieën: Yearly, Monthly, Student, U18). Bron: Grib Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Actieve Leden</span>
                     <div class="kpi-icon blue">
@@ -143,7 +143,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiLedenChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totale omzet deze maand uit Jortt. Bij een lopende maand wordt de geschatte eindstand eronder getoond (omzet × dagen in maand / dagen verstreken). Bron: Jortt upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Maandomzet</span>
                     <div class="kpi-icon green">
@@ -154,7 +154,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiOmzetChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Aantal proeflessen (volwassenen + U18). Geteld uit Grib Nieuwe Leden Excel: rijen met type Free Trial, Free Trial Advanced, Free Trial Women of Trial Week Kids. Bron: Grib Nieuwe Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Trials</span>
                     <div class="kpi-icon red">
@@ -165,7 +165,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiTrialsChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Opzeggingspercentage: verloren leden deze maand / actieve leden vorige maand. Alleen echte abonnementen (Yearly, Monthly, Student, U18). Bron: Grib Verloren Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Attrition Rate</span>
                     <div class="kpi-icon purple">
@@ -176,7 +176,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiAttritionChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Customer Lifetime Value: gemiddelde omzet per lid (12 maanden) / gemiddelde attrition rate (12 maanden). Bij een lopende maand wordt de omzet geëxtrapoleerd naar de volledige maand.">
                 <div class="kpi-header">
                     <span class="kpi-label">Customer LTV</span>
                     <div class="kpi-icon green">
@@ -237,7 +237,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- Leden KPI Cards -->
         <section class="kpi-grid">
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totaal aantal check-ins deze maand (alle lessen opgeteld). Bron: handmatige invoer.">
                 <div class="kpi-header">
                     <span class="kpi-label">Totale Bezoeken</span>
                     <div class="kpi-icon blue">
@@ -248,7 +248,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiParticipantsChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Gemiddeld aantal deelnemers per les: totale bezoeken / totaal sessies. Bron: handmatige invoer.">
                 <div class="kpi-header">
                     <span class="kpi-label">Gem. per Les</span>
                     <div class="kpi-icon green">
@@ -259,7 +259,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiPPSChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Hoe vaak een lid gemiddeld traint per maand: totaal sessies / actieve leden. Bron: handmatige invoer + Grib Leden.">
                 <div class="kpi-header">
                     <span class="kpi-label">Sessies per Lid</span>
                     <div class="kpi-icon purple">
@@ -270,7 +270,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiSPMChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totaal aantal gegeven lessen deze maand. Bron: handmatige invoer.">
                 <div class="kpi-header">
                     <span class="kpi-label">Totaal Sessies</span>
                     <div class="kpi-icon red">
@@ -284,7 +284,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- Leden KPI Cards Row 2 -->
         <section class="kpi-grid">
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Conversie van proeflessen naar lidmaatschap: nieuwe leden / trials × 100%. Bron: Grib Nieuwe Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Trial → Lid %</span>
                     <div class="kpi-icon green">
@@ -295,7 +295,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiTrialConversionChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Leden met een nieuw echt abonnement deze maand (Yearly, Monthly, Student, U18). Startdatum valt in de geselecteerde maand. Bron: Grib Nieuwe Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Nieuwe Leden</span>
                     <div class="kpi-icon blue">
@@ -306,7 +306,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiNewMembersChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Leden met een beëindigd echt abonnement deze maand. Einddatum valt in de geselecteerde maand. Bron: Grib Verloren Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Verloren Leden</span>
                     <div class="kpi-icon red">
@@ -317,7 +317,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiLostMembersChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Gemiddelde lidmaatschapsduur in maanden. Berekend uit de start- en einddatums van verloren leden. Bron: Grib Verloren Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Gem. LEG</span>
                     <div class="kpi-icon purple">
@@ -358,7 +358,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- Financiën KPI Cards -->
         <section class="kpi-grid">
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totale omzet (revenue) uit Jortt. Bij een lopende maand wordt de geschatte eindstand eronder getoond. Bron: Jortt upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Omzet</span>
                     <div class="kpi-icon green">
@@ -370,7 +370,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiRevenueChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totale kosten uit Jortt (costs). Bevat alle uitgaven exclusief payroll. Bron: Jortt upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Kosten</span>
                     <div class="kpi-icon red">
@@ -381,7 +381,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiCostsChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totale loonkosten uit Jortt (payroll). Bron: Jortt upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Payroll</span>
                     <div class="kpi-icon blue">
@@ -392,7 +392,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiPayrollChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Netto winst: omzet − kosten − payroll. Bron: Jortt upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Winst</span>
                     <div class="kpi-icon purple">
@@ -406,7 +406,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- EBITDA KPI Cards -->
         <section class="kpi-grid kpi-grid-2">
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="EBITDA deze maand: omzet − kosten (exclusief afschrijvingen, rente en belasting). Bron: Jortt upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">EBITDA (maand)</span>
                     <div class="kpi-icon green">
@@ -417,7 +417,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-change" id="kpiEbitdaChange"></div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="EBITDA over de laatste 12 maanden opgeteld: som van maandelijkse (omzet − kosten) over 12 maanden. Bron: Jortt upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">EBITDA (12 mnd)</span>
                     <div class="kpi-icon purple">
@@ -475,7 +475,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- Marketing KPI Cards -->
         <section class="kpi-grid kpi-grid-5">
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Nieuwe leads via Mailchimp deze maand. Bron: handmatige invoer.">
                 <div class="kpi-header">
                     <span class="kpi-label">Nieuwe Leads</span>
                     <div class="kpi-icon blue">
@@ -485,7 +485,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-value" id="mkKpiLeads">—</div>
                 <div class="kpi-change" id="mkKpiLeadsChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Aantal e-book downloads deze maand. Bron: handmatige invoer.">
                 <div class="kpi-header">
                     <span class="kpi-label">E-book Downloads</span>
                     <div class="kpi-icon green">
@@ -495,7 +495,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-value" id="mkKpiEbook">—</div>
                 <div class="kpi-change" id="mkKpiEbookChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totaal proeflessen (volwassenen + U18). Bron: Grib Nieuwe Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Trials</span>
                     <div class="kpi-icon purple">
@@ -506,7 +506,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-split" id="mkKpiTrialsSplit"></div>
                 <div class="kpi-change" id="mkKpiTrialsChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Conversie van proeflessen naar lidmaatschap: nieuwe leden / trials × 100%. Bron: Grib Nieuwe Leden upload.">
                 <div class="kpi-header">
                     <span class="kpi-label">Trial → Lid %</span>
                     <div class="kpi-icon green">
@@ -516,7 +516,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-value" id="mkKpiConversion">—</div>
                 <div class="kpi-change" id="mkKpiConversionChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Totaal aantal e-mail subscribers in Mailchimp. Bron: Mailchimp API (automatisch).">
                 <div class="kpi-header">
                     <span class="kpi-label">Totaal Subscribers</span>
                     <div class="kpi-icon red">
@@ -1089,7 +1089,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
 
         <!-- Simulator KPI Cards -->
         <section class="kpi-grid kpi-grid-5">
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="De nieuwe abonnementsprijs na de gesimuleerde verhoging. Berekend uit de huidige prijs + het ingevoerde percentage.">
                 <div class="kpi-header">
                     <span class="kpi-label">Nieuwe Prijs</span>
                     <div class="kpi-icon green">
@@ -1099,7 +1099,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-value" id="simKpiNewPrice">—</div>
                 <div class="kpi-change" id="simKpiNewPriceChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Geschat aantal leden dat opzegt door de prijsverhoging. Gebaseerd op de prijselasticiteit-slider.">
                 <div class="kpi-header">
                     <span class="kpi-label">Verwacht Ledenverlies</span>
                     <div class="kpi-icon red">
@@ -1109,7 +1109,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-value" id="simKpiLost">—</div>
                 <div class="kpi-change" id="simKpiLostChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Verwachte maandomzet na de prijsverhoging: (leden − verlies) × nieuwe prijs. Verschil vs huidige omzet wordt eronder getoond.">
                 <div class="kpi-header">
                     <span class="kpi-label">Nieuwe Omzet</span>
                     <div class="kpi-icon blue">
@@ -1119,7 +1119,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-value" id="simKpiRevenue">—</div>
                 <div class="kpi-change" id="simKpiRevenueChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Verwachte attrition rate na de prijsverhoging: (huidig verlies + extra verlies) / totaal leden. Bron: simulatie.">
                 <div class="kpi-header">
                     <span class="kpi-label">Nieuwe Churn</span>
                     <div class="kpi-icon purple">
@@ -1129,7 +1129,7 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
                 <div class="kpi-value" id="simKpiChurn">—</div>
                 <div class="kpi-change" id="simKpiChurnChange"></div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" data-tooltip="Het maximale aantal leden dat je kunt verliezen voordat de prijsverhoging verliesgevend wordt (nieuwe omzet < huidige omzet).">
                 <div class="kpi-header">
                     <span class="kpi-label">Break-even Verlies</span>
                     <div class="kpi-icon red">
@@ -1630,6 +1630,6 @@ foreach (['jpg', 'jpeg', 'png', 'webp'] as $ext) {
         pageLabels: <?= json_encode($pageLabels) ?>
     };
     </script>
-    <script src="dashboard.js?v=38"></script>
+    <script src="dashboard.js?v=39"></script>
 </body>
 </html>
